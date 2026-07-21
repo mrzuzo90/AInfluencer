@@ -3,32 +3,61 @@ import { logger } from './shared/logger.js';
 import { config } from './shared/config.js';
 import { runPipeline } from './pipeline.js';
 
-export function startScheduler(): ScheduledTask | null {
-  if (!config.schedulerEnabled) {
-    logger.info('Scheduler is disabled (set SCHEDULER_ENABLED=true to enable)');
-    return null;
-  }
+let currentTask: ScheduledTask | null = null;
+let currentTime = '09:00';
 
-  // Schedule pipeline to run every day at 9:00 AM
-  // Format: 0 9 * * * (minute hour day_of_month month day_of_week)
-  const task = cron.schedule('0 9 * * *', async () => {
-    logger.info('⏰ Scheduled pipeline trigger (9:00 AM)');
+function toCronExpression(time: string): string {
+  const match = time.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  if (!match) {
+    throw new Error(`Invalid time format "${time}", expected HH:MM (24h)`);
+  }
+  const [, hour, minute] = match;
+  return `${parseInt(minute, 10)} ${parseInt(hour, 10)} * * *`;
+}
+
+function scheduleAt(time: string): ScheduledTask {
+  const task = cron.schedule(toCronExpression(time), async () => {
+    logger.info(`⏰ Scheduled pipeline trigger (${time})`);
     try {
       await runPipeline();
     } catch (err) {
       logger.error(`Scheduled pipeline failed: ${err}`);
     }
   });
-
-  logger.info('✅ Scheduler started: pipeline will run daily at 9:00 AM');
-
+  currentTime = time;
+  logger.info(`✅ Scheduler active: pipeline will run daily at ${time}`);
   return task;
 }
 
-export function stopScheduler(task: any): void {
+export function startScheduler(): ScheduledTask | null {
+  if (!config.schedulerEnabled) {
+    logger.info('Scheduler is disabled (set SCHEDULER_ENABLED=true to enable)');
+    return null;
+  }
+
+  currentTask = scheduleAt(currentTime);
+  return currentTask;
+}
+
+/**
+ * Stops the running daily schedule and starts a new one at the given HH:MM.
+ * Used by the /schedule Telegram command so it actually reprograms the
+ * pipeline instead of just acknowledging the request.
+ */
+export function rescheduleDailyRun(time: string): void {
+  if (currentTask) {
+    currentTask.stop();
+  }
+  currentTask = scheduleAt(time);
+}
+
+export function getScheduledTime(): string {
+  return currentTime;
+}
+
+export function stopScheduler(task: ScheduledTask | null = currentTask): void {
   if (task) {
     task.stop();
-    task.destroy();
     logger.info('Scheduler stopped');
   }
 }

@@ -1,7 +1,10 @@
 import { logger } from '../shared/logger.js';
 import { GeneratedContent } from '../shared/types.js';
+import { config } from '../shared/config.js';
 import { scriptOptimizer } from './scriptOptimizer.js';
 import { narrationGenerator } from './narrationGenerator.js';
+import { stockFootageProvider } from './stockFootageProvider.js';
+import { renderVideo } from './videoRenderer.js';
 
 export interface VideoAsset {
   id: string;
@@ -16,6 +19,8 @@ export interface CompiledVideo {
   duration: number;
   assets: VideoAsset[];
   subtitles: Array<{ timestamp: number; text: string }>;
+  /** Path to the rendered mp4 (burned-in subtitles + footage + watermark), if ffmpeg + footage were available. */
+  filePath: string | null;
   metadata: {
     script: string;
     hooks: string[];
@@ -43,11 +48,34 @@ export class VideoAssembler {
       narration.duration
     );
 
-    // 4. Create video asset structure
+    const videoId = `video-${articleId}-${Date.now()}`;
+
+    // 4. Fetch stock footage and render the actual mp4 (burned-in subtitles +
+    // watermark). Best-effort: falls back to null (audio+metadata only) when
+    // ffmpeg or footage aren't available — the caller/publisher already
+    // treats a null render as "not a real video" and stays honest about it.
+    const keywords = [content.title, ...(videoScript.hooks || [])]
+      .filter((s): s is string => !!s)
+      .flatMap((s) => s.split(/\s+/))
+      .filter((w) => w.length > 3)
+      .slice(0, 5);
+
+    const clips = await stockFootageProvider.fetchClips(keywords, 3);
+    const rendered = await renderVideo({
+      outputBaseName: videoId,
+      narrationAudio: narration.audioBuffer,
+      durationMs: narration.duration,
+      clips,
+      subtitles,
+      watermarkText: config.videoWatermarkText,
+    });
+
+    // 5. Create video asset structure
     const video: CompiledVideo = {
-      id: `video-${articleId}-${Date.now()}`,
+      id: videoId,
       title: content.title || 'Untitled Video',
       duration: narration.duration,
+      filePath: rendered?.filePath ?? null,
       assets: [
         {
           id: 'narration',
@@ -79,7 +107,7 @@ export class VideoAssembler {
 
     logger.info(`✅ Video compiled: ${video.id}`);
     logger.info(`   Duration: ${video.duration}ms`);
-    logger.info(`   Assets: ${video.assets.length}`);
+    logger.info(`   Rendered file: ${video.filePath || '(none — audio+metadata only)'}`);
     logger.info(`   Subtitles: ${subtitles.length}`);
 
     return video;
@@ -93,23 +121,13 @@ export class VideoAssembler {
     const msPerWord = totalDuration / words.length;
     const subtitles: Array<{ timestamp: number; text: string }> = [];
 
-    let currentTimestamp = 0;
-    let currentChunk = '';
-
-    for (let i = 0; i < words.length; i++) {
-      currentChunk += (currentChunk ? ' ' : '') + words[i];
-
-      if (
-        currentChunk.split(' ').length % 5 === 0 ||
-        i === words.length - 1
-      ) {
-        subtitles.push({
-          timestamp: Math.floor(currentTimestamp),
-          text: currentChunk,
-        });
-        currentTimestamp += msPerWord * currentChunk.split(' ').length;
-        currentChunk = '';
-      }
+    const CHUNK_SIZE = 5;
+    for (let i = 0; i < words.length; i += CHUNK_SIZE) {
+      const chunk = words.slice(i, i + CHUNK_SIZE);
+      subtitles.push({
+        timestamp: Math.floor(i * msPerWord),
+        text: chunk.join(' '),
+      });
     }
 
     return subtitles;

@@ -26,6 +26,10 @@ export interface Config {
   youtubeClientId?: string;
   youtubeClientSecret?: string;
   youtubeRefreshToken?: string;
+  pexelsApiKey?: string;
+  videoWatermarkText: string;
+  videoOutputDir: string;
+  youtubePrivacyStatus: 'public' | 'unlisted' | 'private';
   // Integration flags
   hasAnthropicKey: boolean;
   hasSupabase: boolean;
@@ -34,6 +38,7 @@ export interface Config {
   hasLinkedin: boolean;
   hasElevenLabs: boolean;
   hasYoutube: boolean;
+  hasPexels: boolean;
 }
 
 function getConfig(): Config {
@@ -63,6 +68,13 @@ function getConfig(): Config {
   const youtubeClientId = process.env.YOUTUBE_CLIENT_ID;
   const youtubeClientSecret = process.env.YOUTUBE_CLIENT_SECRET;
   const youtubeRefreshToken = process.env.YOUTUBE_REFRESH_TOKEN;
+  const pexelsApiKey = process.env.PEXELS_API_KEY;
+  const videoWatermarkText = process.env.VIDEO_WATERMARK_TEXT || 'AInfluencer';
+  const videoOutputDir = process.env.VIDEO_OUTPUT_DIR || './output';
+  const youtubePrivacyStatus = (process.env.YOUTUBE_PRIVACY_STATUS || 'unlisted') as
+    | 'public'
+    | 'unlisted'
+    | 'private';
 
   return {
     env,
@@ -85,6 +97,10 @@ function getConfig(): Config {
     youtubeClientId,
     youtubeClientSecret,
     youtubeRefreshToken,
+    pexelsApiKey,
+    videoWatermarkText,
+    videoOutputDir,
+    youtubePrivacyStatus,
     hasAnthropicKey: !!anthropicApiKey,
     hasSupabase: !!(supabaseUrl && supabaseAnonKey),
     hasTelegram: !!telegramBotToken,
@@ -92,6 +108,7 @@ function getConfig(): Config {
     hasLinkedin: !!(linkedinClientId && linkedinClientSecret),
     hasElevenLabs: !!elevenLabsApiKey,
     hasYoutube: !!(youtubeClientId && youtubeClientSecret && youtubeRefreshToken),
+    hasPexels: !!pexelsApiKey,
   };
 }
 

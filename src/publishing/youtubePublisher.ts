@@ -1,9 +1,13 @@
+import { readFile, stat } from 'node:fs/promises';
 import { logger } from '../shared/logger.js';
 import { Post, GeneratedContent } from '../shared/types.js';
 import { IPostRepository } from '../shared/repository/postRepository.js';
 import { randomUUID } from 'crypto';
 import { config } from '../shared/config.js';
 import { CompiledVideo } from '../video/videoAssembler.js';
+
+const YOUTUBE_UPLOAD_URL =
+  'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status';
 
 /**
  * YouTube Shorts Publisher
@@ -35,30 +39,33 @@ export class YouTubePublisher {
 
     if (!this.refreshToken) {
       logger.warn('YouTube credentials not configured');
-      return this.publishAsPlaceholder(articleId, content);
+      return this.publishAsPlaceholder(articleId, content, video);
+    }
+
+    if (!video.filePath) {
+      logger.warn(
+        '⚠️  No rendered video file (ffmpeg or stock footage unavailable) — cannot upload, saving as scheduled placeholder instead'
+      );
+      return this.publishAsPlaceholder(articleId, content, video);
     }
 
     try {
       await this.ensureAccessToken();
+      const videoId = await this.uploadVideo(content, video);
 
-      // TODO: Implement actual video upload (resumable upload to
-      // googleapis.com/youtube/v3/videos). Until then, status stays
-      // 'scheduled' — never claim 'published' for content that wasn't
-      // actually uploaded.
       const post: Post = {
         id: randomUUID(),
         articleId,
         platform: 'youtube',
         content: content.linkedinPost || '',
-        status: 'scheduled',
+        status: 'published',
+        url: `https://youtube.com/shorts/${videoId}`,
         hooks: content.hooks?.join(' | '),
         hashtags: content.hashtags?.join(' '),
         script: video.metadata.script,
       };
 
-      logger.warn(`⚠️  Video NOT actually uploaded (upload not yet implemented)`);
-      logger.info(`   Video ID: ${video.id}`);
-      logger.info(`   Duration: ${video.duration}ms`);
+      logger.info(`✅ Video uploaded to YouTube: ${post.url}`);
 
       await this.postRepository.save(post);
       return post;
@@ -66,6 +73,70 @@ export class YouTubePublisher {
       logger.error(`Video publishing failed: ${err}`);
       throw err;
     }
+  }
+
+  private async uploadVideo(content: GeneratedContent, video: CompiledVideo): Promise<string> {
+    if (!video.filePath) {
+      throw new Error('uploadVideo called without a rendered video file');
+    }
+
+    const fileBuffer = await readFile(video.filePath);
+    const { size } = await stat(video.filePath);
+
+    const title = (content.title || video.title || 'Untitled').slice(0, 100);
+    const description = [content.linkedinPost, content.hashtags?.join(' ')]
+      .filter(Boolean)
+      .join('\n\n')
+      .slice(0, 5000);
+    const tags = (content.hashtags || []).map((tag) => tag.replace(/^#/, '')).slice(0, 15);
+
+    // 1. Initiate a resumable upload session.
+    const initResponse = await fetch(YOUTUBE_UPLOAD_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json; charset=UTF-8',
+        'X-Upload-Content-Type': 'video/mp4',
+        'X-Upload-Content-Length': size.toString(),
+      },
+      body: JSON.stringify({
+        snippet: { title, description, tags },
+        status: {
+          privacyStatus: config.youtubePrivacyStatus,
+          selfDeclaredMadeForKids: false,
+        },
+      }),
+    });
+
+    if (!initResponse.ok) {
+      throw new Error(
+        `YouTube upload init failed: ${initResponse.status} ${await initResponse.text()}`
+      );
+    }
+
+    const uploadUrl = initResponse.headers.get('location');
+    if (!uploadUrl) {
+      throw new Error('YouTube did not return a resumable upload URL');
+    }
+
+    // 2. Upload the video bytes to the session URL.
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'video/mp4',
+        'Content-Length': size.toString(),
+      },
+      body: fileBuffer,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(
+        `YouTube upload failed: ${uploadResponse.status} ${await uploadResponse.text()}`
+      );
+    }
+
+    const result = (await uploadResponse.json()) as { id: string };
+    return result.id;
   }
 
   private async ensureAccessToken(): Promise<void> {
@@ -107,7 +178,8 @@ export class YouTubePublisher {
 
   private async publishAsPlaceholder(
     articleId: string,
-    content: GeneratedContent
+    content: GeneratedContent,
+    video?: CompiledVideo
   ): Promise<Post> {
     const post: Post = {
       id: randomUUID(),
@@ -117,7 +189,7 @@ export class YouTubePublisher {
       status: 'draft',
       hooks: content.hooks?.join(' | '),
       hashtags: content.hashtags?.join(' '),
-      script: content.script,
+      script: video?.metadata.script ?? content.script,
     };
 
     await this.postRepository.save(post);

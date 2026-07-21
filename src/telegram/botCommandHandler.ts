@@ -1,10 +1,19 @@
 import { logger } from '../shared/logger.js';
 import { config } from '../shared/config.js';
 import { runTrendingPost, runHybridPost } from '../pipeline.js';
-import { analyticsRepo } from '../shared/repository/factory.js';
+import { analyticsRepo, postRepo } from '../shared/repository/factory.js';
 import { getTodaysTopic, getTopicEmoji } from '../filtering/topicRotation.js';
 import { hybridScheduler } from '../hybrid-profile/index.js';
 import { TelegramClient, TelegramUpdate } from '../shared/telegramClient.js';
+import { rescheduleDailyRun, getScheduledTime } from '../scheduler.js';
+import { LinkedInPublisher } from '../publishing/draftPublisher.js';
+import { YouTubePublisher } from '../publishing/youtubePublisher.js';
+import { videoAssembler } from '../video/videoAssembler.js';
+import { GeneratedContent } from '../shared/types.js';
+import {
+  fetchVideoStats,
+  extractYouTubeVideoId,
+} from '../publishing/youtubeAnalytics.js';
 
 export type TelegramMessage = NonNullable<TelegramUpdate['message']>;
 
@@ -93,26 +102,73 @@ export class BotCommandHandler {
   }
 
   private async schedulePosting(chatId: number, time?: string): Promise<void> {
-    const scheduleTime = time || '09:00';
-    await this.sendMessage(
-      chatId,
-      `⏰ Scheduling next post for ${scheduleTime}\n(Requires scheduler setup)`
+    if (!time) {
+      await this.sendMessage(
+        chatId,
+        `⏰ Current schedule: ${getScheduledTime()}\nUsage: /schedule HH:MM (24h)`
+      );
+      return;
+    }
+
+    try {
+      rescheduleDailyRun(time);
+      await this.sendMessage(chatId, `✅ Daily pipeline rescheduled to run at ${time}`);
+    } catch (err) {
+      await this.sendMessage(
+        chatId,
+        `❌ ${err instanceof Error ? err.message : 'Invalid time'} — use HH:MM, e.g. /schedule 09:30`
+      );
+    }
+  }
+
+  /**
+   * Best-effort refresh of live YouTube view/like counts for published
+   * videos before reading the analytics rollup, so /analytics reflects
+   * real YouTube Analytics data when credentials are configured.
+   */
+  private async refreshYouTubeMetrics(): Promise<void> {
+    if (!config.hasYoutube) return;
+
+    const posts = await postRepo.findAll();
+    const youtubePosts = posts.filter(
+      (p) => p.platform === 'youtube' && p.status === 'published' && p.url
     );
+
+    for (const post of youtubePosts) {
+      const videoId = extractYouTubeVideoId(post.url!);
+      if (!videoId) continue;
+
+      const stats = await fetchVideoStats(videoId);
+      if (!stats) continue;
+
+      const now = new Date().toISOString();
+      await analyticsRepo.saveMetrics({
+        postId: post.id,
+        platform: 'youtube',
+        impressions: stats.views,
+        clicks: 0,
+        shares: 0,
+        comments: stats.comments,
+        engagementRate: stats.views > 0 ? stats.likes / stats.views : 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
   }
 
   private async showAnalytics(chatId: number): Promise<void> {
-    try {
-      const analytics = await analyticsRepo.getTodaysAnalytics();
+    await this.refreshYouTubeMetrics().catch((err) =>
+      logger.warn(`YouTube metrics refresh failed (non-fatal): ${err}`)
+    );
 
-      if (!analytics) {
-        await this.sendMessage(
-          chatId,
-          '📊 No analytics available yet for today'
-        );
-        return;
-      }
+    const analytics = await analyticsRepo.getTodaysAnalytics();
 
-      const report = `
+    if (!analytics) {
+      await this.sendMessage(chatId, '📊 No analytics available yet for today');
+      return;
+    }
+
+    const report = `
 📊 **Today's Analytics**
 ━━━━━━━━━━━━━━━━━━━━━━━━━
 Posts: ${analytics.totalPosts}
@@ -120,18 +176,28 @@ Impressions: ${analytics.totalImpressions.toLocaleString()}
 Engagement: ${analytics.totalEngagement}
 Avg Engagement Rate: ${(analytics.avgEngagementRate * 100).toFixed(1)}%
 ${analytics.topPost ? `\n🏆 Top Post: ${analytics.topPost.postId}\nClicks: ${analytics.topPost.clicks} | Engagement Rate: ${(analytics.topPost.engagementRate * 100).toFixed(1)}%` : ''}
-      `.trim();
+    `.trim();
 
-      await this.sendMessage(chatId, report);
-    } catch (err) {
-      throw err;
-    }
+    await this.sendMessage(chatId, report);
   }
 
   private async listDrafts(chatId: number): Promise<void> {
+    const posts = await postRepo.findAll();
+    const drafts = posts.filter((p) => p.status === 'draft').slice(-10);
+
+    if (drafts.length === 0) {
+      await this.sendMessage(chatId, '📝 No pending drafts.');
+      return;
+    }
+
+    const lines = drafts.map((d) => {
+      const snippet = d.content.replace(/\n/g, ' ').slice(0, 60);
+      return `\`${d.id.slice(0, 8)}\` [${d.platform}] ${snippet}${snippet.length === 60 ? '…' : ''}`;
+    });
+
     await this.sendMessage(
       chatId,
-      '📝 Drafts:\n(Database integration pending)\n\nUse /publish [draft-id] to approve & publish'
+      `📝 **Pending Drafts** (${drafts.length})\n━━━━━━━━━━━━━━━━━━━━━━━━━\n${lines.join('\n')}\n\nUse /publish <id> to approve & publish one.`
     );
   }
 
@@ -141,9 +207,47 @@ ${analytics.topPost ? `\n🏆 Top Post: ${analytics.topPost.postId}\nClicks: ${a
       return;
     }
 
+    const posts = await postRepo.findAll();
+    const draft = posts.find((p) => p.id.startsWith(draftId));
+
+    if (!draft) {
+      await this.sendMessage(chatId, `❌ No draft found matching "${draftId}"`);
+      return;
+    }
+
+    if (draft.status !== 'draft') {
+      await this.sendMessage(chatId, `⚠️ That post is already "${draft.status}", not a pending draft.`);
+      return;
+    }
+
+    await this.sendMessage(chatId, `🚀 Publishing draft ${draft.id.slice(0, 8)}...`);
+
+    const content: GeneratedContent = {
+      linkedinPost: draft.content,
+      hooks: draft.hooks?.split(' | '),
+      hashtags: draft.hashtags?.split(' '),
+      script: draft.script,
+    };
+
+    let resultStatus: string;
+    if (draft.platform === 'youtube') {
+      const video = await videoAssembler.assemble(draft.articleId, content);
+      const youtubePublisher = new YouTubePublisher(postRepo);
+      const published = await youtubePublisher.publishVideo(draft.articleId, content, video);
+      resultStatus = published.status;
+    } else {
+      const linkedinPublisher = new LinkedInPublisher(postRepo);
+      const published = await linkedinPublisher.publish(draft.articleId, content);
+      resultStatus = published.status;
+    }
+
+    await postRepo.updateStatus(draft.id, resultStatus as 'draft' | 'scheduled' | 'published' | 'failed');
+
     await this.sendMessage(
       chatId,
-      `🚀 Publishing draft ${draftId}...\n(Requires database integration)`
+      resultStatus === 'draft'
+        ? `⚠️ Publish attempted but credentials aren't configured for ${draft.platform} — still a draft.`
+        : `✅ Draft ${draft.id.slice(0, 8)} is now "${resultStatus}"`
     );
   }
 

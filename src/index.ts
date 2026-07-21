@@ -1,6 +1,7 @@
 import { logger, config } from './shared/index.js';
 import { runPipeline } from './pipeline.js';
 import { startScheduler } from './scheduler.js';
+import { botCommandHandler } from './telegram/index.js';
 
 async function main() {
   logger.info('🚀 AInfluencer starting...');
@@ -16,8 +17,16 @@ async function main() {
   // Start scheduler if enabled
   if (config.schedulerEnabled) {
     startScheduler();
-    logger.info('Scheduler ready. Press Ctrl+C to exit.');
-    // Keep process alive
+  }
+
+  // Start the Telegram bot command listener if configured
+  if (config.hasTelegram) {
+    await botCommandHandler.startPolling();
+  }
+
+  // Keep the process alive if either the scheduler or the bot is running
+  if (config.schedulerEnabled || config.hasTelegram) {
+    logger.info('AInfluencer ready. Press Ctrl+C to exit.');
     await new Promise(() => {});
   }
 }
