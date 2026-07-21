@@ -157,81 +157,50 @@ MONETIZATION_SCORE = (
 
 ## Fases de Desarrollo
 
-### ✅ FASE 0: Setup (1-2 días)
-- [ ] Crear repo
-- [ ] Setup CI/CD (GitHub Actions)
-- [ ] Configure Supabase project
-- [ ] Setup Claude.md + memoria
-- [ ] Config credentials (NewsAPI, Twitter, Telegram, etc.)
+### ✅ FASE 0: Setup — Completa
+- [x] Crear repo
+- [x] Setup CI/CD (GitHub Actions)
+- [x] Setup Claude.md + memoria
+- [ ] Configure Supabase project — plantilla lista (`migrations/`), proyecto real aún no creado por el usuario
+- [ ] Config credentials (NewsAPI, Twitter, Telegram, etc.) — pendiente de que el usuario las ingrese
 
-### 🚀 FASE 1: MVP (2-3 semanas)
+### ✅ FASE 1: MVP — Completa
 **Objetivo**: Sistema end-to-end funcionando con LinkedIn + Telegram
 
-- [ ] News aggregation pipeline
-  - [ ] NewsAPI integration
-  - [ ] Reddit scraper
-  - [ ] Google Trends integration
-- [ ] Intelligent filtering
-  - [ ] Scoring LLM system
-  - [ ] Daily selection logic
-  - [ ] Database de noticias evaluadas
-- [ ] Content generation
-  - [ ] Prompt engineering para scripts
-  - [ ] LinkedIn post generator
-  - [ ] Hashtag + keywords optimizer
-- [ ] LinkedIn publishing
-  - [ ] LinkedIn API integration
-  - [ ] Scheduler (daily 9am)
-  - [ ] Error handling + retries
-- [ ] Telegram notifications
-  - [ ] Bot setup
-  - [ ] Publish notifications
-  - [ ] Basic commands (/status, /next)
+- [x] News aggregation pipeline (NewsAPI + Reddit + samples fallback; Google Trends no implementado)
+- [x] Intelligent filtering (scoring 40% trending / 60% monetización)
+- [x] Content generation (Claude `claude-sonnet-5` + template fallback)
+- [x] LinkedIn publishing (draft real; llamada real a LinkedIn API sigue pendiente — placeholder honesto)
+- [x] Telegram notifications (bot setup, publish notifications; comandos ver Fase 3)
 
-**Output**: 1 post/día a LinkedIn, notif vía Telegram
+**Output**: 1 post/día a LinkedIn, notif vía Telegram ✅
 
 ---
 
-### 🎬 FASE 2: Video + YouTube Shorts (2-3 semanas)
-**Objetivo**: Generación de video automática para YouTube Shorts
+### ✅ FASE 2: Video + YouTube Shorts — Code-complete (ver sección detallada más abajo)
 
-- [ ] Script optimization para video
-- [ ] Video generation pipeline
-  - [ ] ElevenLabs integration (narración)
-  - [ ] Stock footage/visuals provider
-  - [ ] Subtitle generation (burned-in)
-  - [ ] Branding/watermark
-- [ ] YouTube Shorts API integration
-- [ ] Scheduler para dual publishing (LinkedIn + YouTube)
-- [ ] Dashboard: view metrics (YouTube Analytics)
+- [x] Script optimization para video
+- [x] Video generation pipeline (ElevenLabs, Pexels, subtítulos quemados, watermark)
+- [x] YouTube Shorts API integration (upload real)
+- [x] Dashboard: view metrics (YouTube Analytics) vía `/analytics`
+- [ ] Scheduler para dual publishing coordinado (hoy LinkedIn y YouTube publican independientemente)
 
-**Output**: Videos de 15-30s publicados automáticamente
+**Output**: Videos de 15-30s — código completo, **no probado con ffmpeg/credenciales reales** (ver caveat en la sección detallada)
 
 ---
 
-### 🎮 FASE 3: User Control + Refinement (1-2 semanas)
-**Objetivo**: Control manual, feedback loop, optimizaciones
+### 🟡 FASE 3: User Control + Refinement — Mayormente completa
 
-- [ ] Telegram commands
-  - [ ] `/create [prompt]` - crear contenido on-demand
-  - [ ] `/delete [url]` - borrar/ocultar post
-  - [ ] `/schedule [time]` - reprogramar publicación
-  - [ ] `/analytics` - ver metrics del día
-- [ ] Draft review system
-  - [ ] Preview antes de publicar
-  - [ ] Aprobación manual (si quieres)
-- [ ] Analytics dashboard
-  - [ ] Impressions, CTR, engagement por post
-  - [ ] Trending topics that worked
-  - [ ] ROI por temática
-- [ ] Feedback loop
-  - [ ] Ajuste automático de scoring basado en performance
+- [x] Telegram commands (`/create-trending`, `/create-hybrid`, `/schedule`, `/analytics`, `/draft-list`, `/publish` — todos reales)
+- [ ] Draft review system con preview visual (hoy solo texto)
+- [x] Analytics dashboard (impressions, engagement — trending/ROI comparisons no implementados)
+- [ ] Feedback loop (ajuste automático de scoring basado en performance) — no implementado
 
-**Output**: Sistema con control manual + self-learning
+**Output**: Sistema con control manual ✅ + self-learning ❌ (pendiente)
 
 ---
 
-### 🌐 FASE 4: Expansion (Post-MVP)
+### 🌐 FASE 4: Expansion (Post-MVP) — No iniciada
 - TikTok integration (requiere workaround; posible blocker)
 - Instagram Reels
 - Blog syncing (WordPress/Medium)
@@ -271,6 +240,8 @@ MONETIZATION_SCORE = (
 | **FASE 4** | Expansion tasks | **Sonnet 5** | **Opus 4.8** para decisiones arquitectónicas | Default Sonnet, escalable |
 
 **Regla de revisión**: Si recomiendo usar un modelo diferente al default de la fase actual, **DEBO pedir tu confirmación ANTES** de proceder.
+
+> **Auditoría (2026-07-22)**: se encontró que `generation/contentGenerator.ts`, `hybrid-profile/hybridGenerator.ts` y `filtering/monetizationScorer.ts` usaban `claude-opus-4-5-20250805` — un model ID inválido, y además Opus sin la confirmación previa que exige esta regla. Corregido a `claude-sonnet-5` (el default correcto de Fase 1) en todos los casos.
 
 **Presupuesto estimado (monthly)**:
 - FASE 1: ~$50-80 (30 scoring calls @ Sonnet + content generation)
@@ -388,66 +359,83 @@ MONETIZATION_SCORE = (
 
 ---
 
-## Fase 2: Video + YouTube Shorts (2-3 semanas)
+## Fase 2: Video + YouTube Shorts — ✅ Completa (code-complete, untested with real ffmpeg/credentials)
 
 ### Tasks
-- [ ] Video script optimization (15-30s, high-engagement)
-- [ ] ElevenLabs integration (text-to-speech narración)
-- [ ] Stock footage provider (placeholder o Pixabay/Pexels API)
-- [ ] Subtitle generation (burned-in, sync con narración)
-- [ ] Branding layer (watermark, intro/outro)
-- [ ] YouTube Shorts API integration
-- [ ] Dual publishing: LinkedIn post + YouTube Short (same content)
-- [ ] Video script templates (+ Claude enhancement)
+- [x] Video script optimization (15-30s, high-engagement) — `video/scriptOptimizer.ts`
+- [x] ElevenLabs integration (text-to-speech narración) — `video/narrationGenerator.ts`; only calls the real (billed) API when `PUBLISH_LIVE=true`, template estimate otherwise
+- [x] Stock footage provider (Pexels API + placeholder fallback) — `video/stockFootageProvider.ts`
+- [x] Subtitle generation (burned-in, sync con narración) — `video/videoRenderer.ts` (ffmpeg `subtitles` filter)
+- [x] Branding layer (watermark) — `video/videoRenderer.ts` (ffmpeg `drawtext` filter, `VIDEO_WATERMARK_TEXT`)
+- [x] YouTube Shorts API integration — real resumable upload in `publishing/youtubePublisher.ts`
+- [x] Dashboard: view metrics (YouTube Analytics) — `publishing/youtubeAnalytics.ts`, wired into `/analytics`
+- [ ] Dual publishing: LinkedIn post + YouTube Short (same content) — both publish independently today (`publishing/videoPublisher.ts`), not yet a single coordinated "same content, two platforms" flow
+- [ ] intro/outro — only a still watermark exists, no animated intro/outro clip
+
+**Caveat importante**: ffmpeg no está instalado en el entorno de desarrollo donde se construyó esto — el renderizado real de video (`videoRenderer.ts`) nunca se ejecutó de punta a punta con un binario real, solo se verificó el camino de degradación (sin ffmpeg → cae a audio+metadata, sin errores). Antes de confiar en esto en producción: instalar ffmpeg, configurar `PEXELS_API_KEY` + credenciales de YouTube reales, y correr el pipeline una vez para confirmar que el `.mp4` se genera y sube correctamente. Ver `PHASE_2_3_SETUP.md`.
 
 ### Technical
-- `src/video/` new folder
+- `src/video/`
   - `scriptOptimizer.ts` - adapt for video (shorter, punchier)
-  - `narrationGenerator.ts` - ElevenLabs client
-  - `videoAssembler.ts` - orchestrate footage + narration + subtitles
-  - `youtubePublisher.ts` - Shorts API client
-- Add to `package.json`: ElevenLabs SDK
-- Modify `publishing/publisherFactory.ts` - add video publisher option
-- Modify `pipeline.ts` - generate video content path
+  - `narrationGenerator.ts` - ElevenLabs client (gated behind `PUBLISH_LIVE`)
+  - `stockFootageProvider.ts` - Pexels client + placeholder fallback
+  - `videoRenderer.ts` - ffmpeg-based mp4 assembly (footage + narration + burned-in subs + watermark)
+  - `videoAssembler.ts` - orchestrates the above into a `CompiledVideo`
+- `src/publishing/`
+  - `youtubePublisher.ts` - real resumable upload (falls back to honest 'scheduled'/'draft' placeholder without ffmpeg/credentials)
+  - `youtubeAnalytics.ts` - views/likes/comments fetch for `/analytics`
+  - `videoPublisher.ts` - multi-platform orchestration (draft vs live, text + video)
 
 ### Configuration
 ```
 ELEVENLABS_API_KEY=          # https://elevenlabs.io/sign-up
 ELEVENLABS_VOICE_ID=eleven_monolingual_v1
-YOUTUBE_REFRESH_TOKEN=       # OAuth credential
+YOUTUBE_CLIENT_ID=           # OAuth credential (get via npm run get-youtube-token)
+YOUTUBE_CLIENT_SECRET=
+YOUTUBE_REFRESH_TOKEN=
+YOUTUBE_PRIVACY_STATUS=unlisted   # public | unlisted | private
+PEXELS_API_KEY=              # https://www.pexels.com/api/ (free)
+VIDEO_WATERMARK_TEXT=AInfluencer
+VIDEO_OUTPUT_DIR=./output
 PUBLISH_VIDEO=true           # Enable video generation
 ```
+Requires the `ffmpeg` binary on PATH (`brew install ffmpeg` / `apt install ffmpeg`) — without it, video generation silently degrades to audio+metadata only.
 
 ---
 
-## Fase 3: User Control + Analytics (1-2 semanas)
+## Fase 3: User Control + Analytics — 🟡 Mayormente completa
 
 ### Telegram Bot Commands
-- [ ] `/create-hybrid [topic-id]` - generate hybrid post on-demand
-- [ ] `/create-trending` - generate from today's news
-- [ ] `/schedule [time] [topic-id]` - schedule specific post
-- [ ] `/analytics` - show today's performance
-- [ ] `/draft-list` - list pending drafts
-- [ ] `/publish [draft-id]` - publish specific draft to production
+- [x] `/create-hybrid [topic-id]` - generate hybrid post on-demand (el `[topic-id]` específico todavía se ignora — usa el que decida el scheduler, ver TODO en `botCommandHandler.ts`)
+- [x] `/create-trending` - generate from today's news
+- [x] `/schedule [HH:MM]` - reprograma el cron real (`scheduler.ts: rescheduleDailyRun`)
+- [x] `/analytics` - real, con refresh de YouTube Analytics cuando hay credenciales
+- [x] `/draft-list` - lista drafts reales desde `postRepo`
+- [x] `/publish [draft-id]` - publica de verdad (LinkedIn o YouTube según el draft), actualiza el status
+
+**Importante**: el bot nunca se arrancaba — `botCommandHandler.startPolling()` no estaba conectado a `index.ts`. Ya corregido: se arranca automáticamente cuando `TELEGRAM_BOT_TOKEN` está configurado.
 
 ### Analytics Dashboard
-- [ ] impressions, clicks, shares per post
-- [ ] trending topics that worked (scoring accuracy)
-- [ ] hybrid vs trending performance comparison
-- [ ] ROI by category/topic
+- [x] impressions, clicks, shares per post — `shared/repository/analyticsRepository.ts` (in-memory + Supabase real vía `post_metrics` table, `migrations/002_post_metrics.sql`)
+- [ ] trending topics that worked (scoring accuracy) — no implementado
+- [ ] hybrid vs trending performance comparison — no implementado
+- [ ] ROI by category/topic — no implementado
+
+### Pendiente (no implementado)
+- [ ] Draft review system con preview visual antes de publicar (hoy `/draft-list` es solo texto)
+- [ ] Feedback loop: ajuste automático de scoring basado en performance real
 
 ### Technical
-- `src/telegram/` refactor
-  - `botCommandHandler.ts` - command routing
-  - `draftManager.ts` - list, preview, publish drafts
-  - `analyticsReporter.ts` - fetch + format metrics
-- Add to `package.json`: telegram-bot-api (official)
-- Modify `pipeline.ts` - export createHybridPost, createTrendingPost as public functions
+- `src/telegram/`
+  - `botCommandHandler.ts` - command routing (real, no stubs)
+- `src/shared/telegramClient.ts` - cliente HTTP compartido (sendMessage + getUpdates), usado tanto por el bot como por `notifications/notifier.ts`
+- `src/scheduler.ts` - soporta reprogramación dinámica (`rescheduleDailyRun`)
+- `pipeline.ts` exporta `runHybridPost()` / `runTrendingPost()` directamente (en vez de un único `runPipeline()` que decidía por su cuenta)
 
 ### Configuration
 ```
 TELEGRAM_BOT_TOKEN=          # https://t.me/BotFather
-TELEGRAM_CHAT_ID=            # Your chat ID (auto-detected or manual)
+TELEGRAM_CHAT_ID=            # npm run get-telegram-chat-id
 PUBLISH_LIVE=false           # Safe default; set true to auto-publish from bot
 ```
 
@@ -485,22 +473,31 @@ SCHEDULER_ENABLED=false       # set true for automatic 9am runs
 
 ### API Keys (optional, auto-activate integrations)
 ```
-ANTHROPIC_API_KEY=            # Claude (scoring, generation)
+ANTHROPIC_API_KEY=            # Claude (scoring, generation) — model: claude-sonnet-5
 SUPABASE_URL=                 # PostgreSQL persistence
 SUPABASE_ANON_KEY=
-TELEGRAM_BOT_TOKEN=           # Notifications
+TELEGRAM_BOT_TOKEN=           # Notifications + bot commands
+TELEGRAM_CHAT_ID=             # npm run get-telegram-chat-id
 NEWSAPI_KEY=                  # Additional news source
 LINKEDIN_CLIENT_ID=           # Production publishing
 LINKEDIN_CLIENT_SECRET=
-ELEVENLABS_API_KEY=           # Phase 2 (video)
-YOUTUBE_REFRESH_TOKEN=        # Phase 2 (video)
+ELEVENLABS_API_KEY=           # Phase 2 (video narration)
+YOUTUBE_CLIENT_ID=            # Phase 2 (video upload) — npm run get-youtube-token
+YOUTUBE_CLIENT_SECRET=
+YOUTUBE_REFRESH_TOKEN=
+YOUTUBE_PRIVACY_STATUS=unlisted  # public | unlisted | private
+PEXELS_API_KEY=               # Phase 2 (stock footage, free tier)
 ```
+Requires `ffmpeg` on PATH for real video rendering (Phase 2) — see `PHASE_2_3_SETUP.md`.
 
 ### Configuration Flags
 ```
 PUBLISH_LIVE=true             # Auto-publish (default false = draft only)
+PUBLISH_VIDEO=true            # Generate + publish video content (default false)
 HYBRID_RATIO=5                # 1 of every 5 posts is hybrid (default)
 HYBRID_ENABLED=true           # Toggle hybrid system (default)
+VIDEO_WATERMARK_TEXT=AInfluencer
+VIDEO_OUTPUT_DIR=./output
 ```
 
 ---
@@ -520,14 +517,14 @@ npm run test:run
 # Type-check
 npm run lint
 
-# Formatter (when added)
-npm run format
+# One-time OAuth flow to get YOUTUBE_REFRESH_TOKEN
+npm run get-youtube-token
 
-# Generate hybrid post on-demand (add later)
-npm run create-hybrid [topic-id]
+# Print your Telegram chat id (send the bot a message first)
+npm run get-telegram-chat-id
 
-# View database (Supabase web UI)
-# https://supabase.com/dashboard
+# View database / run migrations (Supabase web UI SQL Editor)
+# https://supabase.com/dashboard — paste migrations/001_init.sql, then 002_post_metrics.sql
 ```
 
 ---
@@ -536,17 +533,22 @@ npm run create-hybrid [topic-id]
 
 ### Current Stack
 - **Runtime**: Node.js + TypeScript (ESM)
-- **APIs**: Claude (Anthropic), Supabase (PostgreSQL), Telegram Bot, NewsAPI, Reddit JSON
-- **Scheduler**: node-cron (9am daily when enabled)
-- **Database**: In-memory (Map) or Supabase (swap via factory pattern)
-- **Publishing**: Draft (default) → LinkedIn (OAuth) → YouTube (Phase 2)
-- **Notifications**: Console (default) → Telegram Bot (optional)
+- **APIs**: Claude (Anthropic, `claude-sonnet-5`), Supabase (PostgreSQL), Telegram Bot, NewsAPI, Reddit JSON, ElevenLabs, Pexels, YouTube Data API v3
+- **Scheduler**: node-cron, reprogrammable at runtime via `/schedule` (`scheduler.ts: rescheduleDailyRun`)
+- **Database**: In-memory (Map) or Supabase (swap via factory pattern) — articles, posts, and analytics all follow this pattern
+- **Publishing**: Draft (default) → LinkedIn (OAuth, posts only — no real API call implemented) → YouTube Shorts (real resumable upload, requires ffmpeg-rendered video)
+- **Video rendering**: ffmpeg (local binary) assembles Pexels stock footage + ElevenLabs narration + burned-in subtitles + watermark into an mp4; degrades to audio+metadata-only if ffmpeg/footage aren't available
+- **Notifications**: Console (default) → Telegram Bot (optional), shared HTTP client with the bot command handler
+- **Bot**: Telegram polling loop (exponential backoff on errors), started automatically when `TELEGRAM_BOT_TOKEN` is set
 
 ### Key Files
-- `src/pipeline.ts` - orchestration (trending vs hybrid decision, generate, publish, notify)
-- `src/shared/repository/factory.ts` - database abstraction (in-memory vs Supabase)
-- `src/hybrid-profile/hybridScheduler.ts` - cadence control (1/N posts)
+- `src/pipeline.ts` - exports `runHybridPost()` / `runTrendingPost()`, plus `runPipeline()` which picks one via the scheduler's rotation
+- `src/shared/repository/factory.ts` - database abstraction (in-memory vs Supabase) for articles, posts, **and analytics**
+- `src/hybrid-profile/hybridScheduler.ts` - cadence control (1/N posts), reads ratio from `shared/config.ts`
 - `src/filtering/select.ts` - 40% trending + 60% monetization scoring
+- `src/video/videoAssembler.ts` - orchestrates script → narration → footage → render into a `CompiledVideo`
+- `src/publishing/videoPublisher.ts` - `selectPublisher()` is the single source of truth for draft/LinkedIn/video routing
+- `src/shared/telegramClient.ts` - shared Telegram HTTP client (bot + notifier)
 - `.env.example` - credential template with links
 
 ### Folder Structure
@@ -555,18 +557,22 @@ src/
 ├── aggregation/       (News sources)
 ├── filtering/         (Scoring, selection)
 ├── generation/        (Content creation)
-├── publishing/        (Draft, LinkedIn, YouTube)
+├── publishing/        (Draft, LinkedIn, YouTube upload + analytics, video orchestration)
 ├── notifications/     (Console, Telegram)
 ├── hybrid-profile/    (Your unique positioning)
+├── video/             (Script optimization, narration, stock footage, ffmpeg rendering)
+├── telegram/          (Bot command handler)
 ├── shared/
-│   ├── repository/    (DB abstraction)
+│   ├── repository/    (DB abstraction: articles, posts, analytics)
+│   ├── telegramClient.ts
 │   ├── config.ts      (Flexible, no throw on missing keys)
 │   └── types.ts       (Article, Post, GeneratedContent)
 ├── pipeline.ts        (Main orchestration)
-├── scheduler.ts       (Cron + notifications)
-└── index.ts           (Entry point)
+├── scheduler.ts       (Cron + dynamic rescheduling)
+└── index.ts           (Entry point — starts scheduler AND bot polling)
 
-migrations/            (SQL schemas - run in Supabase)
+scripts/               (get-youtube-token, get-telegram-chat-id — one-time setup helpers)
+migrations/            (SQL schemas - run manually in Supabase SQL Editor)
 .github/workflows/     (CI/CD - TypeScript, tests)
 ```
 
@@ -574,28 +580,22 @@ migrations/            (SQL schemas - run in Supabase)
 
 ## What to Focus On Next Session
 
-1. **Prioritize Fase 2** if you want video content (highest value-add for LinkedIn + YouTube)
-   - Start with script optimization (smaller scope)
-   - Then ElevenLabs + stock footage
-   - YouTube Shorts API last (you have OAuth template)
+1. **Test with real credentials + ffmpeg** — this is the biggest unknown right now:
+   - Install ffmpeg, add `PEXELS_API_KEY`, `ELEVENLABS_API_KEY`, YouTube OAuth creds
+   - Run `PUBLISH_VIDEO=true npm run dev` and confirm a real `.mp4` lands in `./output`
+   - Flip `PUBLISH_LIVE=true` and confirm an actual YouTube upload succeeds
+   - None of this was exercised end-to-end with real tools/credentials — only the graceful-degradation paths were verified
 
-2. **Or Prioritize Fase 3** if you want bot control + analytics
-   - Telegram commands are quick (use existing bot framework)
-   - Analytics require Supabase schema + queries (more work)
+2. **Remaining Fase 3 gaps**:
+   - `/create-hybrid [topic-id]` still ignores the specific topic id
+   - No draft review system with visual preview (text-only via `/draft-list`)
+   - No feedback loop (scoring doesn't adjust based on real performance yet)
 
-3. **Test with real credentials** when ready:
-   - Add ANTHROPIC_API_KEY → system uses Claude instead of heuristics
-   - Add SUPABASE_URL + ANON_KEY → persistence instead of memory
-   - Add TELEGRAM_BOT_TOKEN → real notifications
-   - Run `npm run dev` to see system upgrade automatically
+3. **Fase 4** (not started): TikTok, Instagram Reels, multi-language, SEO optimization — see blockers table above
 
 4. **Customize hybrid topics** if the 8 don't fit your exact angle
    - Edit `src/hybrid-profile/hybridTopics.ts`
-   - Add your specific use cases, examples, target audiences
-   - System will randomly rotate them
 
 ---
 
-**Status**: Fase 1 ✅ Complete. MVP + Hybrid Profile System running autonomously.
-
-Ready for Fase 2 (Video) or Fase 3 (Bot Control) when you are. 🚀
+**Status**: Fase 1 ✅ Complete. Fase 2 (Video) and Fase 3 (Bot Control + Analytics) are code-complete but **untested with real ffmpeg/API credentials** — see caveats above. Fase 4 not started.
