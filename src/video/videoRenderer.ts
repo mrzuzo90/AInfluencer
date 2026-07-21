@@ -135,13 +135,24 @@ export async function renderVideo(
     // 4. Build the filter graph: scale/crop each video input to 1080x1920,
     // concat if there's more than one clip, burn in subtitles, overlay the
     // watermark.
+    //
+    // `fps` is deliberately its own filter step with its own pad label,
+    // not chained via comma after scale/crop/setsar: on ffmpeg 8.1.2,
+    // scale+crop+setsar+fps combined in one comma-separated filter (all
+    // feeding directly into subtitles+drawtext) makes drawtext's `h`/`th`
+    // expressions evaluate as if the frame's origin were flipped — a
+    // bottom-right watermark renders at the top instead. Splitting fps
+    // into a separate labeled step avoids it. Verified by bisecting each
+    // filter individually and in combination against a real ffmpeg binary.
     const scaleLabels: string[] = [];
     let filterParts: string[] = [];
     for (let i = 0; i < videoInputCount; i++) {
+      const scaledLabel = `v${i}scaled`;
       const label = `v${i}`;
       filterParts.push(
         `[${i}:v]scale=${TARGET_WIDTH}:${TARGET_HEIGHT}:force_original_aspect_ratio=increase,` +
-          `crop=${TARGET_WIDTH}:${TARGET_HEIGHT},setsar=1,fps=30[${label}]`
+          `crop=${TARGET_WIDTH}:${TARGET_HEIGHT},setsar=1[${scaledLabel}]`,
+        `[${scaledLabel}]fps=30[${label}]`
       );
       scaleLabels.push(`[${label}]`);
     }
@@ -153,9 +164,17 @@ export async function renderVideo(
     }
 
     const watermarkEscaped = options.watermarkText.replace(/'/g, "\\'").replace(/:/g, '\\:');
+    // force_style is itself comma-separated (ASS style options); ffmpeg's
+    // filtergraph parser also uses commas to separate chained filters, so
+    // those inner commas must be backslash-escaped rather than wrapped in
+    // single quotes — the quoted form fails to parse on ffmpeg 8.x.
+    const forceStyle = 'FontSize=26,PrimaryColour=&HFFFFFF&,BorderStyle=3,Outline=1'.replace(
+      /,/g,
+      '\\,'
+    );
 
     filterParts.push(
-      `[${concatLabel}]subtitles=${escapeForFilter(srtPath)}:force_style='FontSize=26,PrimaryColour=&HFFFFFF&,BorderStyle=3,Outline=1'[vsub]`,
+      `[${concatLabel}]subtitles=${escapeForFilter(srtPath)}:force_style=${forceStyle}[vsub]`,
       `[vsub]drawtext=text='${watermarkEscaped}':x=w-tw-24:y=h-th-48:fontsize=22:fontcolor=white@0.75:box=1:boxcolor=black@0.35:boxborderw=8[vout]`
     );
 
