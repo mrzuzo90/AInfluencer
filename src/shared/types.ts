@@ -35,6 +35,7 @@ export interface AnalyticsEvent {
 }
 
 export interface GeneratedContent {
+  title?: string;
   script?: string;
   linkedinPost?: string;
   hooks?: string[];

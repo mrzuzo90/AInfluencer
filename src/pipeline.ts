@@ -4,6 +4,7 @@ import { newsAggregator } from './aggregation/aggregator.js';
 import { articleSelector } from './filtering/select.js';
 import { ClaudeContentGenerator, TemplateContentGenerator } from './generation/contentGenerator.js';
 import { DraftPublisher } from './publishing/draftPublisher.js';
+import { createVideoPublisher } from './publishing/videoPublisher.js';
 import { getNotifier } from './notifications/notifier.js';
 import { config } from './shared/config.js';
 import { getTodaysTopic, getTopicEmoji } from './filtering/topicRotation.js';
@@ -46,9 +47,11 @@ export async function runPipeline(): Promise<void> {
 
       await articleRepo.save(hybridArticle);
 
-      // 3. Publish
+      // 3. Publish (use VideoPublisher if video is enabled)
       logger.info('\n3️⃣ Publishing hybrid content...');
-      const publisher = new DraftPublisher(postRepo);
+      const publisher = config.publishVideo
+        ? createVideoPublisher(postRepo)
+        : new DraftPublisher(postRepo);
       const post = await publisher.publish(hybridArticle.id, generatedContent);
 
       // 4. Notify
@@ -87,9 +90,11 @@ export async function runPipeline(): Promise<void> {
         : new TemplateContentGenerator();
       const generatedContent = await contentGenerator.generate(selectedArticle);
 
-      // 4. Publish (draft by default)
+      // 4. Publish (use VideoPublisher if video is enabled)
       logger.info('\n4️⃣ Publishing...');
-      const publisher = new DraftPublisher(postRepo);
+      const publisher = config.publishVideo
+        ? createVideoPublisher(postRepo)
+        : new DraftPublisher(postRepo);
       const post = await publisher.publish(selectedArticle.id, generatedContent);
 
       // 5. Notify
