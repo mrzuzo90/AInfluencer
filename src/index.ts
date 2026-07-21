@@ -6,7 +6,7 @@ async function main() {
   logger.info(`Log level: ${config.logLevel}`);
 
   try {
-    const { data, error } = await db.from('articles').select('count', { count: 'exact', head: true });
+    const { error } = await db.from('articles').select('count', { count: 'exact', head: true });
     if (error) throw error;
     logger.info('✅ Database connection OK');
   } catch (err) {
