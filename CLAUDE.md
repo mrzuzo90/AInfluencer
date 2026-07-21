@@ -359,4 +359,243 @@ MONETIZATION_SCORE = (
 
 ---
 
-**Status**: Ready to build 🚀
+## Status & Próximos Pasos
+
+### ✅ COMPLETADO
+
+**Fase 0**: Setup inicial ✓
+- Repo git inicializado
+- TypeScript + Node.js configurado
+- CI/CD con GitHub Actions
+- Estructura base creada
+
+**Fase 1**: MVP end-to-end ✓
+- News aggregation: Reddit (público) + NewsAPI (opcional) + samples (fallback)
+- Intelligent filtering: scoring trending/monetization (40/60 split)
+- Content generation: Claude API (si disponible) o templates
+- Publishing: Draft mode (default, seguro) + LinkedIn (OAuth ready)
+- Notifications: Console (default) + Telegram Bot (opcional)
+- Database: In-memory (dev) + Supabase PostgreSQL (production-ready)
+- Scheduler: node-cron (9am diario) o manual one-shot
+- **Pipeline ejecuta end-to-end sin ninguna credencial**
+
+**Hybrid Profile System**: Activo ✓
+- 8 tópicos predefinidos (IA + Electricidad)
+- Cadencia automática: 1 de cada 5 posts (configurable)
+- On-demand generation ready (para `/create-hybrid`)
+- Integrated into main pipeline: trending + hybrid alternating
+- Claude + template fallbacks
+
+---
+
+## Fase 2: Video + YouTube Shorts (2-3 semanas)
+
+### Tasks
+- [ ] Video script optimization (15-30s, high-engagement)
+- [ ] ElevenLabs integration (text-to-speech narración)
+- [ ] Stock footage provider (placeholder o Pixabay/Pexels API)
+- [ ] Subtitle generation (burned-in, sync con narración)
+- [ ] Branding layer (watermark, intro/outro)
+- [ ] YouTube Shorts API integration
+- [ ] Dual publishing: LinkedIn post + YouTube Short (same content)
+- [ ] Video script templates (+ Claude enhancement)
+
+### Technical
+- `src/video/` new folder
+  - `scriptOptimizer.ts` - adapt for video (shorter, punchier)
+  - `narrationGenerator.ts` - ElevenLabs client
+  - `videoAssembler.ts` - orchestrate footage + narration + subtitles
+  - `youtubePublisher.ts` - Shorts API client
+- Add to `package.json`: ElevenLabs SDK
+- Modify `publishing/publisherFactory.ts` - add video publisher option
+- Modify `pipeline.ts` - generate video content path
+
+### Configuration
+```
+ELEVENLABS_API_KEY=          # https://elevenlabs.io/sign-up
+ELEVENLABS_VOICE_ID=eleven_monolingual_v1
+YOUTUBE_REFRESH_TOKEN=       # OAuth credential
+PUBLISH_VIDEO=true           # Enable video generation
+```
+
+---
+
+## Fase 3: User Control + Analytics (1-2 semanas)
+
+### Telegram Bot Commands
+- [ ] `/create-hybrid [topic-id]` - generate hybrid post on-demand
+- [ ] `/create-trending` - generate from today's news
+- [ ] `/schedule [time] [topic-id]` - schedule specific post
+- [ ] `/analytics` - show today's performance
+- [ ] `/draft-list` - list pending drafts
+- [ ] `/publish [draft-id]` - publish specific draft to production
+
+### Analytics Dashboard
+- [ ] impressions, clicks, shares per post
+- [ ] trending topics that worked (scoring accuracy)
+- [ ] hybrid vs trending performance comparison
+- [ ] ROI by category/topic
+
+### Technical
+- `src/telegram/` refactor
+  - `botCommandHandler.ts` - command routing
+  - `draftManager.ts` - list, preview, publish drafts
+  - `analyticsReporter.ts` - fetch + format metrics
+- Add to `package.json`: telegram-bot-api (official)
+- Modify `pipeline.ts` - export createHybridPost, createTrendingPost as public functions
+
+### Configuration
+```
+TELEGRAM_BOT_TOKEN=          # https://t.me/BotFather
+TELEGRAM_CHAT_ID=            # Your chat ID (auto-detected or manual)
+PUBLISH_LIVE=false           # Safe default; set true to auto-publish from bot
+```
+
+---
+
+## Fase 4: Expansion (Post-MVP)
+
+### Features
+- [ ] TikTok integration (requires workaround - see CLAUDE.md blockers)
+- [ ] Instagram Reels publishing
+- [ ] Multi-language support (Claude translation)
+- [ ] Blog/Medium syncing
+- [ ] Advanced analytics: LLM-powered insights ("this topic got 3x engagement")
+- [ ] A/B testing hooks/CTAs
+- [ ] SEO optimization (keywords, meta tags)
+
+### Potential Blockers
+| Issue | Solution |
+|-------|----------|
+| TikTok API restrictive | Use unofficial SDK or desktop automation wrapper |
+| High API costs (Claude, ElevenLabs) | Cache responses, batch generation, fallback templates |
+| Rate limits | Implement exponential backoff, throttling |
+| Video storage | Cloud bucket (S3, Cloudinary) instead of local |
+
+---
+
+## Important Environment Variables
+
+### Required (for basic operation)
+```
+NODE_ENV=development          # or production
+LOG_LEVEL=debug               # or info, warn, error
+SCHEDULER_ENABLED=false       # set true for automatic 9am runs
+```
+
+### API Keys (optional, auto-activate integrations)
+```
+ANTHROPIC_API_KEY=            # Claude (scoring, generation)
+SUPABASE_URL=                 # PostgreSQL persistence
+SUPABASE_ANON_KEY=
+TELEGRAM_BOT_TOKEN=           # Notifications
+NEWSAPI_KEY=                  # Additional news source
+LINKEDIN_CLIENT_ID=           # Production publishing
+LINKEDIN_CLIENT_SECRET=
+ELEVENLABS_API_KEY=           # Phase 2 (video)
+YOUTUBE_REFRESH_TOKEN=        # Phase 2 (video)
+```
+
+### Configuration Flags
+```
+PUBLISH_LIVE=true             # Auto-publish (default false = draft only)
+HYBRID_RATIO=5                # 1 of every 5 posts is hybrid (default)
+HYBRID_ENABLED=true           # Toggle hybrid system (default)
+```
+
+---
+
+## Quick Commands
+
+```bash
+# Development (runs pipeline once, no scheduler)
+npm run dev
+
+# Build TypeScript
+npm run build
+
+# Tests
+npm run test:run
+
+# Type-check
+npm run lint
+
+# Formatter (when added)
+npm run format
+
+# Generate hybrid post on-demand (add later)
+npm run create-hybrid [topic-id]
+
+# View database (Supabase web UI)
+# https://supabase.com/dashboard
+```
+
+---
+
+## Architecture Summary
+
+### Current Stack
+- **Runtime**: Node.js + TypeScript (ESM)
+- **APIs**: Claude (Anthropic), Supabase (PostgreSQL), Telegram Bot, NewsAPI, Reddit JSON
+- **Scheduler**: node-cron (9am daily when enabled)
+- **Database**: In-memory (Map) or Supabase (swap via factory pattern)
+- **Publishing**: Draft (default) → LinkedIn (OAuth) → YouTube (Phase 2)
+- **Notifications**: Console (default) → Telegram Bot (optional)
+
+### Key Files
+- `src/pipeline.ts` - orchestration (trending vs hybrid decision, generate, publish, notify)
+- `src/shared/repository/factory.ts` - database abstraction (in-memory vs Supabase)
+- `src/hybrid-profile/hybridScheduler.ts` - cadence control (1/N posts)
+- `src/filtering/select.ts` - 40% trending + 60% monetization scoring
+- `.env.example` - credential template with links
+
+### Folder Structure
+```
+src/
+├── aggregation/       (News sources)
+├── filtering/         (Scoring, selection)
+├── generation/        (Content creation)
+├── publishing/        (Draft, LinkedIn, YouTube)
+├── notifications/     (Console, Telegram)
+├── hybrid-profile/    (Your unique positioning)
+├── shared/
+│   ├── repository/    (DB abstraction)
+│   ├── config.ts      (Flexible, no throw on missing keys)
+│   └── types.ts       (Article, Post, GeneratedContent)
+├── pipeline.ts        (Main orchestration)
+├── scheduler.ts       (Cron + notifications)
+└── index.ts           (Entry point)
+
+migrations/            (SQL schemas - run in Supabase)
+.github/workflows/     (CI/CD - TypeScript, tests)
+```
+
+---
+
+## What to Focus On Next Session
+
+1. **Prioritize Fase 2** if you want video content (highest value-add for LinkedIn + YouTube)
+   - Start with script optimization (smaller scope)
+   - Then ElevenLabs + stock footage
+   - YouTube Shorts API last (you have OAuth template)
+
+2. **Or Prioritize Fase 3** if you want bot control + analytics
+   - Telegram commands are quick (use existing bot framework)
+   - Analytics require Supabase schema + queries (more work)
+
+3. **Test with real credentials** when ready:
+   - Add ANTHROPIC_API_KEY → system uses Claude instead of heuristics
+   - Add SUPABASE_URL + ANON_KEY → persistence instead of memory
+   - Add TELEGRAM_BOT_TOKEN → real notifications
+   - Run `npm run dev` to see system upgrade automatically
+
+4. **Customize hybrid topics** if the 8 don't fit your exact angle
+   - Edit `src/hybrid-profile/hybridTopics.ts`
+   - Add your specific use cases, examples, target audiences
+   - System will randomly rotate them
+
+---
+
+**Status**: Fase 1 ✅ Complete. MVP + Hybrid Profile System running autonomously.
+
+Ready for Fase 2 (Video) or Fase 3 (Bot Control) when you are. 🚀
