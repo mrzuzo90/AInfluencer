@@ -372,7 +372,11 @@ MONETIZATION_SCORE = (
 - [ ] Dual publishing: LinkedIn post + YouTube Short (same content) — both publish independently today (`publishing/videoPublisher.ts`), not yet a single coordinated "same content, two platforms" flow
 - [ ] intro/outro — only a still watermark exists, no animated intro/outro clip
 
-**Caveat importante**: ffmpeg no está instalado en el entorno de desarrollo donde se construyó esto — el renderizado real de video (`videoRenderer.ts`) nunca se ejecutó de punta a punta con un binario real, solo se verificó el camino de degradación (sin ffmpeg → cae a audio+metadata, sin errores). Antes de confiar en esto en producción: instalar ffmpeg, configurar `PEXELS_API_KEY` + credenciales de YouTube reales, y correr el pipeline una vez para confirmar que el `.mp4` se genera y sube correctamente. Ver `PHASE_2_3_SETUP.md`.
+**Estado del renderizado real (2026-07-22)**: ffmpeg (`ffmpeg-full`, con libass) fue instalado y el renderizado se probó de punta a punta — genera un `.mp4` real 1080x1920 (h264+aac), duración correcta, subtítulos quemados y watermark verificados visualmente. En el proceso se encontraron y corrigieron 2 bugs reales que solo aparecían con un binario real:
+1. El `force_style` de subtítulos con comillas simples anidadas no lo parsea ffmpeg 8.x (hay que escapar comas con `\,`)
+2. Combinar `scale+crop+setsar+fps` en una sola cadena de filtros hacía que el watermark apareciera arriba en vez de abajo — se corrigió separando `fps` en su propio paso.
+
+**Todavía sin probar**: stock footage real de Pexels (sin API key en este entorno, solo se verificó el fallback de fondo negro), narración real de ElevenLabs (sin API key, solo template), y el upload real a YouTube (sin credenciales OAuth reales). Antes de producción: configurar `PEXELS_API_KEY`, `ELEVENLABS_API_KEY` y credenciales de YouTube, y correr el pipeline una vez más para confirmar esas 3 piezas. Ver `PHASE_2_3_SETUP.md`.
 
 ### Technical
 - `src/video/`
@@ -399,7 +403,7 @@ VIDEO_WATERMARK_TEXT=AInfluencer
 VIDEO_OUTPUT_DIR=./output
 PUBLISH_VIDEO=true           # Enable video generation
 ```
-Requires the `ffmpeg` binary on PATH (`brew install ffmpeg` / `apt install ffmpeg`) — without it, video generation silently degrades to audio+metadata only.
+Requires the `ffmpeg` binary on PATH, built with `libass` for burned-in subtitles (`brew install ffmpeg-full && brew link --overwrite ffmpeg-full` on macOS — the plain `ffmpeg` formula lacks `libass`; `apt install ffmpeg` on Debian/Ubuntu already includes it) — without it, video generation silently degrades to audio+metadata only.
 
 ---
 
@@ -580,11 +584,11 @@ migrations/            (SQL schemas - run manually in Supabase SQL Editor)
 
 ## What to Focus On Next Session
 
-1. **Test with real credentials + ffmpeg** — this is the biggest unknown right now:
-   - Install ffmpeg, add `PEXELS_API_KEY`, `ELEVENLABS_API_KEY`, YouTube OAuth creds
-   - Run `PUBLISH_VIDEO=true npm run dev` and confirm a real `.mp4` lands in `./output`
-   - Flip `PUBLISH_LIVE=true` and confirm an actual YouTube upload succeeds
-   - None of this was exercised end-to-end with real tools/credentials — only the graceful-degradation paths were verified
+1. **Test the remaining Fase 2 unknowns with real credentials**:
+   - ffmpeg rendering itself is confirmed working (see caveat above) — what's left is Pexels footage, ElevenLabs narration, and YouTube upload
+   - Add `PEXELS_API_KEY`, `ELEVENLABS_API_KEY`, YouTube OAuth creds
+   - Run `PUBLISH_VIDEO=true npm run dev` and confirm real stock clips get concatenated (not just the solid-background fallback)
+   - Flip `PUBLISH_LIVE=true` and confirm an actual YouTube upload succeeds end-to-end
 
 2. **Remaining Fase 3 gaps**:
    - `/create-hybrid [topic-id]` still ignores the specific topic id

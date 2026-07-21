@@ -13,15 +13,21 @@ subtitle metadata — no actual `.mp4` file, and nothing gets uploaded to
 YouTube even with valid credentials (`youtubePublisher` falls back to a
 `'scheduled'` placeholder when there's no rendered file).
 
-```bash
-# macOS
-brew install ffmpeg
+**Important**: the plain `ffmpeg` Homebrew formula does **not** include
+`libass`, so the `subtitles` filter (burned-in captions) isn't available
+and rendering fails with `No such filter: 'subtitles'`. Use `ffmpeg-full`
+instead (or any build with `--enable-libass`):
 
-# Debian/Ubuntu
+```bash
+# macOS — ffmpeg-full includes libass (subtitles) + many more codecs
+brew install ffmpeg-full
+brew link --overwrite ffmpeg-full   # make it the `ffmpeg` on PATH
+
+# Debian/Ubuntu — the distro package usually already includes libass
 sudo apt install ffmpeg
 
-# Verify
-ffmpeg -version
+# Verify: this line must appear, or subtitles will silently be skipped
+ffmpeg -filters 2>/dev/null | grep subtitles
 ```
 
 ### Step 0b: Pexels (stock footage, optional but recommended)
