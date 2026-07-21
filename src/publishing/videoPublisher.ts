@@ -1,9 +1,8 @@
 import { logger } from '../shared/logger.js';
 import { Post, GeneratedContent } from '../shared/types.js';
 import { IPostRepository } from '../shared/repository/postRepository.js';
-import { IPublisher, DraftPublisher } from './draftPublisher.js';
+import { IPublisher, DraftPublisher, LinkedInPublisher } from './draftPublisher.js';
 import { YouTubePublisher } from './youtubePublisher.js';
-import { LinkedInPublisher } from './draftPublisher.js';
 import { videoAssembler, CompiledVideo } from '../video/videoAssembler.js';
 import { config } from '../shared/config.js';
 import { randomUUID } from 'crypto';
@@ -33,15 +32,23 @@ export class VideoPublisher {
   ): Promise<Post> {
     logger.info('\n📹 VIDEO PUBLISHER: Starting multi-platform publishing...\n');
 
-    // 1. Assemble video
-    let video: CompiledVideo | null = null;
-    if (config.publishVideo) {
+    // 1. Assemble video and publish text draft concurrently — independent operations
+    const assembleVideo = async (): Promise<CompiledVideo | null> => {
+      if (!config.publishVideo) return null;
       try {
-        video = await videoAssembler.assemble(articleId, content);
+        return await videoAssembler.assemble(articleId, content);
       } catch (err) {
         logger.warn(`Video assembly failed, continuing with text: ${err}`);
+        return null;
       }
-    }
+    };
+
+    const [video, textPost] = await Promise.all([
+      assembleVideo(),
+      !config.publishLive
+        ? this.draftPublisher.publish(articleId, content)
+        : Promise.resolve(null),
+    ]);
 
     // 2. Publish to platforms based on config
     const posts: Post[] = [];
@@ -49,8 +56,7 @@ export class VideoPublisher {
     if (!config.publishLive) {
       // DRAFT ONLY (default safe mode)
       logger.info('📝 DRAFT MODE: Text post only');
-      const textPost = await this.draftPublisher.publish(articleId, content);
-      posts.push(textPost);
+      posts.push(textPost as Post);
 
       if (video) {
         logger.info('📹 Video draft generated (not published)');
@@ -101,3 +107,12 @@ export class VideoPublisher {
 
 export const createVideoPublisher = (repo: IPostRepository) =>
   new VideoPublisher(repo);
+
+/**
+ * Single source of truth for publisher selection.
+ * Used by every pipeline entry point so video/draft routing can't drift
+ * between call sites.
+ */
+export function selectPublisher(repo: IPostRepository): IPublisher {
+  return config.publishVideo ? createVideoPublisher(repo) : new DraftPublisher(repo);
+}

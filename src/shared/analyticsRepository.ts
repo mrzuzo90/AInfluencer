@@ -40,6 +40,7 @@ export class InMemoryAnalyticsRepository implements IAnalyticsRepository {
   async saveMetrics(metrics: PostMetrics): Promise<void> {
     this.metrics.set(metrics.postId, metrics);
     logger.info(`📊 Saved metrics for post ${metrics.postId}`);
+    this.recomputeDailyRecord(metrics.createdAt.split('T')[0]);
   }
 
   async getMetrics(postId: string): Promise<PostMetrics | null> {
@@ -68,6 +69,35 @@ export class InMemoryAnalyticsRepository implements IAnalyticsRepository {
 
   updateDailyRecord(record: AnalyticsRecord): void {
     this.dailyRecords.set(record.date, record);
+  }
+
+  private recomputeDailyRecord(date: string): void {
+    const postsForDate = Array.from(this.metrics.values()).filter(
+      (m) => m.createdAt.split('T')[0] === date
+    );
+
+    if (postsForDate.length === 0) return;
+
+    const totalImpressions = postsForDate.reduce((sum, m) => sum + m.impressions, 0);
+    const totalEngagement = postsForDate.reduce(
+      (sum, m) => sum + m.clicks + m.shares + m.comments,
+      0
+    );
+    const avgEngagementRate =
+      postsForDate.reduce((sum, m) => sum + m.engagementRate, 0) / postsForDate.length;
+    const topPost = postsForDate.reduce((top, m) =>
+      !top || m.engagementRate > top.engagementRate ? m : top
+    , null as PostMetrics | null);
+
+    this.dailyRecords.set(date, {
+      date,
+      topicId: '',
+      totalPosts: postsForDate.length,
+      totalImpressions,
+      totalEngagement,
+      avgEngagementRate,
+      topPost,
+    });
   }
 }
 

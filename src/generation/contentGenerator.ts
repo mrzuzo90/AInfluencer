@@ -46,6 +46,7 @@ URL: ${article.url}`;
       const content = JSON.parse(text);
 
       return {
+        title: article.title,
         script: content.script,
         linkedinPost: content.linkedinPost,
         hooks: content.hooks,
@@ -70,6 +71,7 @@ export class TemplateContentGenerator implements IContentGenerator {
     const link = article.url;
 
     return {
+      title,
       script: `"Did you see this? ${title.substring(0, 60)}... Check it out." [Show article] "This is huge for the industry."`,
       linkedinPost: `🔥 Just read this on ${source}:\n\n"${title}"\n\nThe implications are significant. What's your take?\n\n${link}`,
       hooks: [

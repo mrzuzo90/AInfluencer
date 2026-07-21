@@ -1,4 +1,5 @@
 import { logger } from '../shared/logger.js';
+import { config } from '../shared/config.js';
 
 export interface HybridScheduleConfig {
   ratio: number; // 1/N posts are hybrid (default 1/5 = 20%)
@@ -50,8 +51,8 @@ export class HybridScheduler {
 
 // Global singleton
 export const hybridScheduler = new HybridScheduler(
-  parseInt(process.env.HYBRID_RATIO || '5'),
-  process.env.HYBRID_ENABLED !== 'false'
+  config.hybridRatio,
+  config.hybridEnabled
 );
 
 export default hybridScheduler;

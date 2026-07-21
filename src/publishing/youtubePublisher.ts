@@ -1,7 +1,6 @@
 import { logger } from '../shared/logger.js';
 import { Post, GeneratedContent } from '../shared/types.js';
 import { IPostRepository } from '../shared/repository/postRepository.js';
-import { IPublisher } from './draftPublisher.js';
 import { randomUUID } from 'crypto';
 import { config } from '../shared/config.js';
 import { CompiledVideo } from '../video/videoAssembler.js';
@@ -10,8 +9,11 @@ import { CompiledVideo } from '../video/videoAssembler.js';
  * YouTube Shorts Publisher
  * Publishes 15-30s vertical videos to YouTube Shorts
  * Requires: YOUTUBE_REFRESH_TOKEN (OAuth credential)
+ *
+ * Note: doesn't implement IPublisher — always needs a CompiledVideo,
+ * unlike text-only publishers. Only called via publishVideo().
  */
-export class YouTubePublisher implements IPublisher {
+export class YouTubePublisher {
   private refreshToken: string;
   private clientId: string;
   private clientSecret: string;
@@ -22,51 +24,6 @@ export class YouTubePublisher implements IPublisher {
     this.refreshToken = config.youtubeRefreshToken || '';
     this.clientId = config.youtubeClientId || '';
     this.clientSecret = config.youtubeClientSecret || '';
-  }
-
-  async publish(articleId: string, content: GeneratedContent): Promise<Post> {
-    logger.info('📹 YouTube Shorts Publisher initialized');
-
-    if (!this.refreshToken) {
-      logger.warn(
-        '⚠️  YOUTUBE_REFRESH_TOKEN not configured. YouTube publishing disabled.'
-      );
-      return this.publishAsPlaceholder(articleId, content);
-    }
-
-    try {
-      // Ensure access token is valid
-      await this.ensureAccessToken();
-
-      const post: Post = {
-        id: randomUUID(),
-        articleId,
-        platform: 'youtube',
-        content: content.linkedinPost || '',
-        status: 'scheduled',
-        hooks: content.hooks?.join(' | '),
-        hashtags: content.hashtags?.join(' '),
-        script: content.script,
-      };
-
-      // TODO: Implement actual YouTube Shorts upload
-      // This requires:
-      // 1. Initialize: https://www.googleapis.com/youtube/v3/videos
-      // 2. Upload resumable: multipart upload with video binary
-      // 3. Set: title, description, tags, thumbnail
-      // 4. Publish: change privacy to PUBLIC
-
-      logger.info('📹 YouTube Shorts placeholder (API integration pending)');
-      logger.info(`   Title: ${content.title || '(untitled)'}`);
-      logger.info(`   Description: ${content.linkedinPost}`);
-      logger.info('   ⚠️  Requires OAuth setup + video file upload');
-
-      await this.postRepository.save(post);
-      return post;
-    } catch (err) {
-      logger.error(`YouTube publishing failed: ${err}`);
-      throw err;
-    }
   }
 
   async publishVideo(

@@ -57,20 +57,25 @@ Return JSON with:
         ],
       });
 
-      const text =
-        response.content[0].type === 'text' ? response.content[0].text : '';
+      const block = response.content[0];
+      const rawText = block && block.type === 'text' ? block.text : '';
+      const text = rawText.replace(/```(?:json)?\n?|```/g, '').trim();
       const json = JSON.parse(text);
+
+      if (typeof json.narration !== 'string' || json.narration.length === 0) {
+        throw new Error('Claude response missing required "narration" field');
+      }
 
       return {
         narration: json.narration,
-        duration: json.duration,
-        hooks: json.hooks,
-        visualCues: json.visualCues,
+        duration: typeof json.duration === 'number' ? json.duration : 20,
+        hooks: Array.isArray(json.hooks) ? json.hooks : [],
+        visualCues: Array.isArray(json.visualCues) ? json.visualCues : [],
         subTitle: json.subtitle,
       };
     } catch (err) {
-      logger.error(`Script optimization failed: ${err}`);
-      throw err;
+      logger.warn(`Claude script optimization failed: ${err}, using template`);
+      return new TemplateScriptOptimizer().optimizeForVideo(content);
     }
   }
 }

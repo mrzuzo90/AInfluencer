@@ -3,8 +3,7 @@ import { articleRepo, postRepo } from './shared/repository/factory.js';
 import { newsAggregator } from './aggregation/aggregator.js';
 import { articleSelector } from './filtering/select.js';
 import { ClaudeContentGenerator, TemplateContentGenerator } from './generation/contentGenerator.js';
-import { DraftPublisher } from './publishing/draftPublisher.js';
-import { createVideoPublisher } from './publishing/videoPublisher.js';
+import { selectPublisher } from './publishing/videoPublisher.js';
 import { getNotifier } from './notifications/notifier.js';
 import { config } from './shared/config.js';
 import { getTodaysTopic, getTopicEmoji } from './filtering/topicRotation.js';
@@ -49,9 +48,7 @@ export async function runPipeline(): Promise<void> {
 
       // 3. Publish (use VideoPublisher if video is enabled)
       logger.info('\n3️⃣ Publishing hybrid content...');
-      const publisher = config.publishVideo
-        ? createVideoPublisher(postRepo)
-        : new DraftPublisher(postRepo);
+      const publisher = selectPublisher(postRepo);
       const post = await publisher.publish(hybridArticle.id, generatedContent);
 
       // 4. Notify
@@ -92,9 +89,7 @@ export async function runPipeline(): Promise<void> {
 
       // 4. Publish (use VideoPublisher if video is enabled)
       logger.info('\n4️⃣ Publishing...');
-      const publisher = config.publishVideo
-        ? createVideoPublisher(postRepo)
-        : new DraftPublisher(postRepo);
+      const publisher = selectPublisher(postRepo);
       const post = await publisher.publish(selectedArticle.id, generatedContent);
 
       // 5. Notify

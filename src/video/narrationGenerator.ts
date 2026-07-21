@@ -7,6 +7,13 @@ interface NarrationAudio {
   mimeType: string;
 }
 
+const WORDS_PER_MINUTE = 150;
+
+function estimateDurationMs(script: string): number {
+  const wordCount = script.split(' ').length;
+  return Math.ceil((wordCount / WORDS_PER_MINUTE) * 60000);
+}
+
 class ElevenLabsNarrationGenerator {
   private apiKey: string;
   private baseUrl = 'https://api.elevenlabs.io/v1';
@@ -52,7 +59,7 @@ class ElevenLabsNarrationGenerator {
 
       return {
         audioBuffer: Buffer.from(audioBuffer),
-        duration: Math.ceil((script.split(' ').length / 150) * 1000), // Estimate: ~150 wpm
+        duration: estimateDurationMs(script),
         mimeType: 'audio/mpeg',
       };
     } catch (err) {
@@ -65,9 +72,7 @@ class ElevenLabsNarrationGenerator {
 class TemplateNarrationGenerator {
   async generateNarration(script: string): Promise<NarrationAudio> {
     // Return empty audio buffer for template (in real usage, this would be a placeholder)
-    const estimatedDuration = Math.ceil(
-      (script.split(' ').length / 150) * 1000
-    );
+    const estimatedDuration = estimateDurationMs(script);
 
     logger.info(
       `🎙️  (Template) Narration estimated at ${estimatedDuration}ms`

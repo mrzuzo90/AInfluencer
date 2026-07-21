@@ -55,6 +55,7 @@ Make it sound authentic, not corporate. Include personal perspective about combi
       const content = JSON.parse(text);
 
       return {
+        title: topic.title,
         script: content.script,
         linkedinPost: content.linkedinPost,
         hooks: content.hooks,
@@ -95,6 +96,7 @@ ${topic.examples ? `Ejemplo real: ${topic.examples[0]}` : ''}
 Audience: ${topic.targetAudience.join(' | ')}`;
 
     return {
+      title: topic.title,
       script: `"${topic.title}... Un tema que apasiona a developers y técnicos por igual. Aquí está mi perspectiva."`,
       linkedinPost: postContent,
       hooks: [

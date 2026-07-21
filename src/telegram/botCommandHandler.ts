@@ -6,7 +6,7 @@ import { getTodaysTopic, getTopicEmoji } from '../filtering/topicRotation.js';
 import { hybridScheduler } from '../hybrid-profile/index.js';
 
 export interface TelegramMessage {
-  chat_id: number;
+  chat: { id: number };
   text: string;
 }
 
@@ -35,39 +35,37 @@ export class BotCommandHandler {
       return;
     }
 
+    const chatId = message.chat.id;
     const text = message.text.trim();
 
     try {
       if (text === '/start' || text === '/help') {
-        await this.sendMessage(
-          message.chat_id,
-          this.getHelpMessage()
-        );
+        await this.sendMessage(chatId, this.getHelpMessage());
       } else if (text === '/create-trending') {
-        await this.createTrendingPost(message.chat_id);
+        await this.createTrendingPost(chatId);
       } else if (text.startsWith('/create-hybrid')) {
         const topicId = text.split(' ')[1];
-        await this.createHybridPost(message.chat_id, topicId);
+        await this.createHybridPost(chatId, topicId);
       } else if (text.startsWith('/schedule')) {
         const time = text.split(' ')[1];
-        await this.schedulePosting(message.chat_id, time);
+        await this.schedulePosting(chatId, time);
       } else if (text === '/analytics') {
-        await this.showAnalytics(message.chat_id);
+        await this.showAnalytics(chatId);
       } else if (text === '/draft-list') {
-        await this.listDrafts(message.chat_id);
+        await this.listDrafts(chatId);
       } else if (text.startsWith('/publish')) {
         const draftId = text.split(' ')[1];
-        await this.publishDraft(message.chat_id, draftId);
+        await this.publishDraft(chatId, draftId);
       } else {
         await this.sendMessage(
-          message.chat_id,
+          chatId,
           '❓ Unknown command. Type /help for available commands.'
         );
       }
     } catch (err) {
       logger.error(`Command handler error: ${err}`);
       await this.sendMessage(
-        message.chat_id,
+        chatId,
         `❌ Error: ${err instanceof Error ? err.message : 'Unknown error'}`
       );
     }
@@ -229,6 +227,7 @@ ${analytics.topPost ? `\n🏆 Top Post: ${analytics.topPost.postId}\nClicks: ${a
 
     logger.info('🤖 Telegram bot polling started...');
     let offset = 0;
+    let consecutiveFailures = 0;
 
     const poll = async () => {
       try {
@@ -259,14 +258,18 @@ ${analytics.topPost ? `\n🏆 Top Post: ${analytics.topPost.postId}\nClicks: ${a
         for (const update of data.result) {
           if (update.message?.text) {
             await this.handleCommand(update.message);
-            offset = update.update_id + 1;
           }
+          offset = update.update_id + 1;
         }
+
+        consecutiveFailures = 0;
       } catch (err) {
         logger.error(`Polling error: ${err}`);
+        consecutiveFailures++;
       }
 
-      setTimeout(poll, 5000); // Poll every 5 seconds
+      const backoffMs = Math.min(5000 * 2 ** consecutiveFailures, 60000);
+      setTimeout(poll, backoffMs);
     };
 
     poll();
