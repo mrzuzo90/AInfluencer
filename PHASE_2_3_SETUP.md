@@ -6,6 +6,33 @@ This guide walks you through configuring credentials for **Fase 2 (Video + YouTu
 
 ## Phase 2: Video Generation & YouTube Shorts
 
+### Step 0: ffmpeg (required for real video rendering)
+
+Without this, the pipeline still runs but only produces narration audio +
+subtitle metadata — no actual `.mp4` file, and nothing gets uploaded to
+YouTube even with valid credentials (`youtubePublisher` falls back to a
+`'scheduled'` placeholder when there's no rendered file).
+
+```bash
+# macOS
+brew install ffmpeg
+
+# Debian/Ubuntu
+sudo apt install ffmpeg
+
+# Verify
+ffmpeg -version
+```
+
+### Step 0b: Pexels (stock footage, optional but recommended)
+
+1. Go to https://www.pexels.com/api/ and request a free API key (instant, no card)
+2. In `.env`, set:
+   ```
+   PEXELS_API_KEY=your_api_key_here
+   ```
+Without this, rendered videos use a solid black background instead of stock footage.
+
 ### Step 1: ElevenLabs (Text-to-Speech)
 
 1. Go to https://elevenlabs.io/sign-up and create account
@@ -38,22 +65,17 @@ This guide walks you through configuring credentials for **Fase 2 (Video + YouTu
    - Choose **Desktop app** (or Web app)
    - Download the JSON file
    - Extract `client_id` and `client_secret`
-4. Get refresh token (one-time OAuth flow):
+4. Add the redirect URI `http://localhost:8765/oauth2callback` to the OAuth client's authorized redirect URIs
+5. In `.env`, set `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET`, then run:
    ```bash
-   # Use this script to authenticate and get refresh token
    npm run get-youtube-token
    ```
-   Follow the prompts to authorize your app
-5. In `.env`, set:
-   ```
-   YOUTUBE_CLIENT_ID=your_client_id_here
-   YOUTUBE_CLIENT_SECRET=your_client_secret_here
-   YOUTUBE_REFRESH_TOKEN=your_refresh_token_here
-   ```
+   Open the printed URL, authorize, and the script prints your `YOUTUBE_REFRESH_TOKEN` — add it to `.env`.
 6. Enable video publishing:
    ```
    PUBLISH_VIDEO=true
    PUBLISH_LIVE=true
+   YOUTUBE_PRIVACY_STATUS=unlisted   # or public / private
    ```
 
 **Cost**: Free (API quota: 10,000 units/day)
@@ -121,10 +143,9 @@ No setup needed. Analytics stored in app memory (resets on restart).
    SUPABASE_URL=your_url_here
    SUPABASE_ANON_KEY=your_anon_key_here
    ```
-4. Run database migrations:
-   ```bash
-   npm run db:migrate
-   ```
+4. Apply the migrations: open the Supabase dashboard's **SQL Editor** and
+   paste/run `migrations/001_init.sql` then `migrations/002_post_metrics.sql`
+   (no CLI migration runner is set up in this repo)
 
 ---
 
