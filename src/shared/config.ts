@@ -3,55 +3,67 @@ import { logger } from './logger.js';
 
 dotenv.config();
 
-interface Config {
+export interface Config {
   env: 'development' | 'production';
   logLevel: string;
-  anthropicApiKey: string;
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-  telegramBotToken: string;
+  schedulerEnabled: boolean;
+  publishLive: boolean;
+  anthropicApiKey?: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+  telegramBotToken?: string;
   newsapiKey?: string;
-  redditClientId?: string;
-  redditClientSecret?: string;
   linkedinClientId?: string;
   linkedinClientSecret?: string;
-  twitterApiKey?: string;
-  twitterApiSecret?: string;
-  twitterBearerToken?: string;
+  // Flags para saber qué integraciones están disponibles
+  hasAnthropicKey: boolean;
+  hasSupabase: boolean;
+  hasTelegram: boolean;
+  hasNewsApi: boolean;
+  hasLinkedin: boolean;
 }
 
 function getConfig(): Config {
   const env = (process.env.NODE_ENV || 'development') as 'development' | 'production';
   const logLevel = process.env.LOG_LEVEL || 'debug';
+  const schedulerEnabled = process.env.SCHEDULER_ENABLED !== 'false';
+  const publishLive = process.env.PUBLISH_LIVE === 'true';
 
-  const requiredVars = ['ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'TELEGRAM_BOT_TOKEN'];
-
-  const missing = requiredVars.filter((v) => !process.env[v]);
-
-  if (missing.length > 0) {
-    logger.error(
-      `Missing required environment variables: ${missing.join(', ')}. Check .env.example and create .env file.`
-    );
-    throw new Error(`Missing env vars: ${missing.join(', ')}`);
-  }
+  const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
+  const newsapiKey = process.env.NEWSAPI_KEY;
+  const linkedinClientId = process.env.LINKEDIN_CLIENT_ID;
+  const linkedinClientSecret = process.env.LINKEDIN_CLIENT_SECRET;
 
   return {
     env,
     logLevel,
-    anthropicApiKey: process.env.ANTHROPIC_API_KEY!,
-    supabaseUrl: process.env.SUPABASE_URL!,
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
-    telegramBotToken: process.env.TELEGRAM_BOT_TOKEN!,
-    newsapiKey: process.env.NEWSAPI_KEY,
-    redditClientId: process.env.REDDIT_CLIENT_ID,
-    redditClientSecret: process.env.REDDIT_CLIENT_SECRET,
-    linkedinClientId: process.env.LINKEDIN_CLIENT_ID,
-    linkedinClientSecret: process.env.LINKEDIN_CLIENT_SECRET,
-    twitterApiKey: process.env.TWITTER_API_KEY,
-    twitterApiSecret: process.env.TWITTER_API_SECRET,
-    twitterBearerToken: process.env.TWITTER_BEARER_TOKEN,
+    schedulerEnabled,
+    publishLive,
+    anthropicApiKey,
+    supabaseUrl,
+    supabaseAnonKey,
+    telegramBotToken,
+    newsapiKey,
+    linkedinClientId,
+    linkedinClientSecret,
+    hasAnthropicKey: !!anthropicApiKey,
+    hasSupabase: !!(supabaseUrl && supabaseAnonKey),
+    hasTelegram: !!telegramBotToken,
+    hasNewsApi: !!newsapiKey,
+    hasLinkedin: !!(linkedinClientId && linkedinClientSecret),
   };
 }
 
 export const config = getConfig();
+
+if (process.env.NODE_ENV !== 'test') {
+  logger.info(`Config loaded: env=${config.env}, scheduler=${config.schedulerEnabled}, live=${config.publishLive}`);
+  logger.debug(
+    `Available integrations: Anthropic=${config.hasAnthropicKey}, Supabase=${config.hasSupabase}, Telegram=${config.hasTelegram}, NewsAPI=${config.hasNewsApi}, LinkedIn=${config.hasLinkedin}`
+  );
+}
+
 export default config;

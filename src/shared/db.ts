@@ -1,9 +1,15 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { config } from './config.js';
 import { logger } from './logger.js';
 
-export const db = createClient(config.supabaseUrl, config.supabaseAnonKey);
+let db: SupabaseClient | null = null;
 
-logger.info('Supabase client initialized');
+if (config.hasSupabase) {
+  db = createClient(config.supabaseUrl!, config.supabaseAnonKey!);
+  logger.info('✅ Supabase client initialized');
+} else {
+  logger.warn('⚠️ Supabase not configured (SUPABASE_URL/ANON_KEY missing) — using in-memory storage');
+}
 
+export { db };
 export default db;
