@@ -115,8 +115,20 @@ export class VideoPublisher {
   }
 }
 
-export const createVideoPublisher = (repo: IPostRepository) =>
-  new VideoPublisher(repo);
+// Cached per repo instance so YouTubePublisher's OAuth access-token cache
+// survives across pipeline runs within the same process (postRepo is a
+// module-level singleton from factory.ts, so in practice this cache holds
+// exactly one entry).
+const videoPublisherCache = new WeakMap<IPostRepository, VideoPublisher>();
+
+export function createVideoPublisher(repo: IPostRepository): VideoPublisher {
+  let publisher = videoPublisherCache.get(repo);
+  if (!publisher) {
+    publisher = new VideoPublisher(repo);
+    videoPublisherCache.set(repo, publisher);
+  }
+  return publisher;
+}
 
 /**
  * Single source of truth for publisher selection.

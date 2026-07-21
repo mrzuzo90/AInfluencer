@@ -92,9 +92,14 @@ export class NarrationGenerator {
     | TemplateNarrationGenerator;
 
   constructor() {
-    this.generator = config.elevenLabsApiKey
-      ? new ElevenLabsNarrationGenerator()
-      : new TemplateNarrationGenerator();
+    // Only call the real (billed) ElevenLabs API when actually going live —
+    // draft-mode runs (the common case while testing PUBLISH_VIDEO=true)
+    // use the template estimator instead, even if a key is configured, so
+    // they don't rack up narration charges for content that's just a draft.
+    this.generator =
+      config.hasElevenLabs && config.publishLive
+        ? new ElevenLabsNarrationGenerator()
+        : new TemplateNarrationGenerator();
   }
 
   async generate(script: string): Promise<NarrationAudio> {

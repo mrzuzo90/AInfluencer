@@ -1,6 +1,7 @@
 import { Post } from '../shared/types.js';
 import { config } from '../shared/config.js';
 import { logger } from '../shared/logger.js';
+import { TelegramClient } from '../shared/telegramClient.js';
 
 export interface INotifier {
   notify(post: Post, articleTitle: string): Promise<void>;
@@ -24,36 +25,19 @@ export class ConsoleNotifier implements INotifier {
  * Only used if TELEGRAM_BOT_TOKEN is configured
  */
 export class TelegramNotifier implements INotifier {
-  private botToken: string;
-  private chatId: string = process.env.TELEGRAM_CHAT_ID || 'YOUR_CHAT_ID';
-  private apiUrl = 'https://api.telegram.org/bot';
+  private client: TelegramClient;
+  private chatId: string;
 
   constructor(botToken: string) {
-    this.botToken = botToken;
+    this.client = new TelegramClient(botToken);
+    this.chatId = config.telegramChatId?.toString() || process.env.TELEGRAM_CHAT_ID || 'YOUR_CHAT_ID';
   }
 
   async notify(post: Post, articleTitle: string): Promise<void> {
     const message = `📝 *Post Generated* (${post.status})\n\n*Article:* ${articleTitle}\n\n*Platform:* ${post.platform}\n\n*Status:* ${post.status === 'draft' ? '⏳ Review needed' : '✅ Scheduled'}`;
-
-    try {
-      const url = `${this.apiUrl}${this.botToken}/sendMessage`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: this.chatId,
-          text: message,
-          parse_mode: 'Markdown',
-        }),
-      });
-
-      if (!response.ok) {
-        logger.warn(`Telegram notification failed: ${response.status}`);
-      } else {
-        logger.info('✅ Telegram notification sent');
-      }
-    } catch (err) {
-      logger.error(`Telegram send error: ${err}`);
+    const sent = await this.client.sendMessage(this.chatId, message);
+    if (sent) {
+      logger.info('✅ Telegram notification sent');
     }
   }
 }

@@ -1,14 +1,12 @@
 import { logger } from '../shared/logger.js';
 import { config } from '../shared/config.js';
 import { runTrendingPost, runHybridPost } from '../pipeline.js';
-import { analyticsRepository } from '../shared/analyticsRepository.js';
+import { analyticsRepo } from '../shared/repository/factory.js';
 import { getTodaysTopic, getTopicEmoji } from '../filtering/topicRotation.js';
 import { hybridScheduler } from '../hybrid-profile/index.js';
+import { TelegramClient, TelegramUpdate } from '../shared/telegramClient.js';
 
-export interface TelegramMessage {
-  chat: { id: number };
-  text: string;
-}
+export type TelegramMessage = NonNullable<TelegramUpdate['message']>;
 
 /**
  * Phase 3: Telegram Bot Command Handler
@@ -23,10 +21,11 @@ export interface TelegramMessage {
  */
 export class BotCommandHandler {
   private botToken: string;
-  private baseUrl = 'https://api.telegram.org/bot';
+  private client: TelegramClient;
 
   constructor() {
     this.botToken = config.telegramBotToken || '';
+    this.client = new TelegramClient(this.botToken);
   }
 
   async handleCommand(message: TelegramMessage): Promise<void> {
@@ -103,7 +102,7 @@ export class BotCommandHandler {
 
   private async showAnalytics(chatId: number): Promise<void> {
     try {
-      const analytics = await analyticsRepository.getTodaysAnalytics();
+      const analytics = await analyticsRepo.getTodaysAnalytics();
 
       if (!analytics) {
         await this.sendMessage(
@@ -177,35 +176,7 @@ ${analytics.topPost ? `\n🏆 Top Post: ${analytics.topPost.postId}\nClicks: ${a
   }
 
   async sendMessage(chatId: number, text: string): Promise<void> {
-    if (!this.botToken) {
-      logger.warn('Cannot send Telegram message: bot token not configured');
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `${this.baseUrl}${this.botToken}/sendMessage`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text,
-            parse_mode: 'Markdown',
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Telegram API error: ${response.statusText}`);
-      }
-
-      logger.info(`✉️  Telegram message sent to ${chatId}`);
-    } catch (err) {
-      logger.error(`Failed to send Telegram message: ${err}`);
-    }
+    await this.client.sendMessage(chatId, text);
   }
 
   async startPolling(): Promise<void> {
@@ -220,31 +191,9 @@ ${analytics.topPost ? `\n🏆 Top Post: ${analytics.topPost.postId}\nClicks: ${a
 
     const poll = async () => {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const updates = await this.client.getUpdates(offset);
 
-        const response = await fetch(
-          `${this.baseUrl}${this.botToken}/getUpdates?offset=${offset}`,
-          { signal: controller.signal }
-        );
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`Telegram API error: ${response.statusText}`);
-        }
-
-        const data = (await response.json()) as {
-          ok: boolean;
-          result: Array<{ update_id: number; message?: TelegramMessage }>;
-        };
-
-        if (!data.ok) {
-          logger.error('Telegram API returned error');
-          return;
-        }
-
-        for (const update of data.result) {
+        for (const update of updates) {
           if (update.message?.text) {
             await this.handleCommand(update.message);
           }
