@@ -41,19 +41,22 @@ export class YouTubePublisher {
     try {
       await this.ensureAccessToken();
 
-      // Video upload would go here
+      // TODO: Implement actual video upload (resumable upload to
+      // googleapis.com/youtube/v3/videos). Until then, status stays
+      // 'scheduled' — never claim 'published' for content that wasn't
+      // actually uploaded.
       const post: Post = {
         id: randomUUID(),
         articleId,
         platform: 'youtube',
         content: content.linkedinPost || '',
-        status: 'published',
+        status: 'scheduled',
         hooks: content.hooks?.join(' | '),
         hashtags: content.hashtags?.join(' '),
         script: video.metadata.script,
       };
 
-      logger.info(`✅ Video published to YouTube (placeholder)`);
+      logger.warn(`⚠️  Video NOT actually uploaded (upload not yet implemented)`);
       logger.info(`   Video ID: ${video.id}`);
       logger.info(`   Duration: ${video.duration}ms`);
 

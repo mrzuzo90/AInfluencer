@@ -1,6 +1,6 @@
 import { logger } from '../shared/logger.js';
 import { config } from '../shared/config.js';
-import { runPipeline } from '../pipeline.js';
+import { runTrendingPost, runHybridPost } from '../pipeline.js';
 import { analyticsRepository } from '../shared/analyticsRepository.js';
 import { getTodaysTopic, getTopicEmoji } from '../filtering/topicRotation.js';
 import { hybridScheduler } from '../hybrid-profile/index.js';
@@ -73,16 +73,11 @@ export class BotCommandHandler {
 
   private async createTrendingPost(chatId: number): Promise<void> {
     await this.sendMessage(chatId, '⏳ Generating trending post...');
-
-    try {
-      await runPipeline();
-      await this.sendMessage(
-        chatId,
-        '✅ Trending post generated! Check drafts with /draft-list'
-      );
-    } catch (err) {
-      throw err;
-    }
+    await runTrendingPost();
+    await this.sendMessage(
+      chatId,
+      '✅ Trending post generated! Check drafts with /draft-list'
+    );
   }
 
   private async createHybridPost(
@@ -90,18 +85,12 @@ export class BotCommandHandler {
     _topicId?: string
   ): Promise<void> {
     await this.sendMessage(chatId, '⏳ Generating hybrid profile post...');
-
-    try {
-      // TODO: Implement on-demand hybrid post generation with specific topic
-      // For now, just trigger pipeline which will route based on scheduler
-      await runPipeline();
-      await this.sendMessage(
-        chatId,
-        '✅ Hybrid post created! Check with /draft-list'
-      );
-    } catch (err) {
-      throw err;
-    }
+    // TODO: honor a specific topic id instead of the scheduler's random pick
+    await runHybridPost();
+    await this.sendMessage(
+      chatId,
+      '✅ Hybrid post created! Check with /draft-list'
+    );
   }
 
   private async schedulePosting(chatId: number, time?: string): Promise<void> {

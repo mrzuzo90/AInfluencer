@@ -46,7 +46,7 @@ Make it sound authentic, not corporate. Include personal perspective about combi
 
     try {
       const response = await this.client.messages.create({
-        model: 'claude-opus-4-5-20250805',
+        model: 'claude-sonnet-5',
         max_tokens: 900,
         messages: [{ role: 'user', content: prompt }],
       });

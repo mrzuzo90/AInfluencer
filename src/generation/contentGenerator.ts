@@ -37,7 +37,7 @@ URL: ${article.url}`;
 
     try {
       const response = await this.client.messages.create({
-        model: 'claude-opus-4-5-20250805',
+        model: 'claude-sonnet-5',
         max_tokens: 800,
         messages: [{ role: 'user', content: prompt }],
       });

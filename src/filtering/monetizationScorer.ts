@@ -39,7 +39,7 @@ Source: ${article.source}
 Respond with ONLY a JSON object: {"emotionality":N,"shareability":N,"relevance":N,"hook":N} where each N is 0-100.`;
 
       const response = await this.client.messages.create({
-        model: 'claude-opus-4-5-20250805',
+        model: 'claude-sonnet-5',
         max_tokens: 100,
         messages: [{ role: 'user', content: prompt }],
       });

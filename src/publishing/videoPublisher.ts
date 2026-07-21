@@ -5,6 +5,7 @@ import { IPublisher, DraftPublisher, LinkedInPublisher } from './draftPublisher.
 import { YouTubePublisher } from './youtubePublisher.js';
 import { videoAssembler, CompiledVideo } from '../video/videoAssembler.js';
 import { config } from '../shared/config.js';
+import { getNotifier } from '../notifications/notifier.js';
 import { randomUUID } from 'crypto';
 
 /**
@@ -97,8 +98,17 @@ export class VideoPublisher {
       }
     }
 
-    // 3. Return primary post (for notifications)
-    const primaryPost = posts[0];
+    // 3. Notify any secondary posts directly — the caller only notifies
+    // the primary post it gets back, so extra posts (e.g. the video/YouTube
+    // one alongside the text draft) would otherwise go unannounced.
+    const [primaryPost, ...secondaryPosts] = posts;
+    if (secondaryPosts.length > 0) {
+      const notifier = getNotifier();
+      for (const post of secondaryPosts) {
+        await notifier.notify(post, content.title || 'Untitled');
+      }
+    }
+
     logger.info(`\n✅ Publishing complete: ${posts.length} post(s) created`);
 
     return primaryPost;
@@ -114,5 +124,11 @@ export const createVideoPublisher = (repo: IPostRepository) =>
  * between call sites.
  */
 export function selectPublisher(repo: IPostRepository): IPublisher {
-  return config.publishVideo ? createVideoPublisher(repo) : new DraftPublisher(repo);
+  if (config.publishVideo) {
+    return createVideoPublisher(repo);
+  }
+  if (config.publishLive) {
+    return new LinkedInPublisher(repo);
+  }
+  return new DraftPublisher(repo);
 }
