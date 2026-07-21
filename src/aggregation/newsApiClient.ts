@@ -34,7 +34,7 @@ export class NewsApiClient {
         return [];
       }
 
-      const data: NewsResponse = await response.json();
+      const data = (await response.json()) as NewsResponse;
       return data.articles;
     } catch (err) {
       logger.error(`Error fetching NewsAPI: ${err}`);
@@ -57,7 +57,7 @@ export class NewsApiClient {
         return [];
       }
 
-      const data: NewsResponse = await response.json();
+      const data = (await response.json()) as NewsResponse;
       return data.articles;
     } catch (err) {
       logger.error(`Error searching NewsAPI: ${err}`);

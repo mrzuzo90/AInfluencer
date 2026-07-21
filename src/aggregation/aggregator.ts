@@ -59,7 +59,7 @@ export class NewsAggregator {
           if (seenUrls.has(newsArticle.url)) continue;
 
           const article: Article = {
-            id: uuidv4().toString(),
+            id: randomUUID(),
             title: newsArticle.title,
             description: newsArticle.description,
             url: newsArticle.url,

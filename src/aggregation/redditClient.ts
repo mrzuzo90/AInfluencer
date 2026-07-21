@@ -33,7 +33,7 @@ export class RedditClient {
         return [];
       }
 
-      const data: RedditResponse = await response.json();
+      const data = (await response.json()) as RedditResponse;
       return data.data.children.map((c) => c.data);
     } catch (err) {
       logger.error(`Error fetching Reddit: ${err}`);

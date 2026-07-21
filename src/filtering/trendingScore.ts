@@ -15,7 +15,8 @@ export function calculateTrendingScore(article: Article): number {
 
   // Extract engagement from description (Reddit format: "score upvotes, comments")
   let mentions = 0;
-  const match = article.description.match(/(\d+)\s+upvotes.*?(\d+)\s+comments/);
+  const desc = article.description || '';
+  const match = desc.match(/(\d+)\s+upvotes.*?(\d+)\s+comments/);
   if (match) {
     mentions = parseInt(match[1]) + parseInt(match[2]);
   }
