@@ -161,7 +161,7 @@ MONETIZATION_SCORE = (
 - [x] Crear repo
 - [x] Setup CI/CD (GitHub Actions)
 - [x] Setup Claude.md + memoria
-- [x] Repo pública en GitHub: https://github.com/mrzuzo90/AInfluencer (creada y pusheada el 2026-07-22, `gh repo create --public`), con `README.md` orientado a venta y `LICENSE` (MIT)
+- [x] Repo pública en GitHub: https://github.com/mrzuzo90/AInfluencer (creada y pusheada el 2026-07-22, `gh repo create --public`), con `README.md` orientado a venta y `LICENSE` propietaria (todos los derechos reservados — código visible para portfolio, no reutilizable sin permiso; cambiado de MIT porque el objetivo es vender el proyecto como servicio, no que cualquiera pueda clonarlo y operarlo)
 - [ ] Configure Supabase project — plantilla lista (`migrations/`), proyecto real aún no creado por el usuario
 - [ ] Config credentials (NewsAPI, Twitter, Telegram, etc.) — pendiente de que el usuario las ingrese
 
@@ -707,4 +707,4 @@ suficiente)? Confirmar esto antes de invertir en Nivel 2/3.
 
 ---
 
-**Status**: Fase 1 ✅ Complete. Fase 2 (Video) and Fase 3 (Bot Control + Analytics + Dashboard) are code-complete but **untested with real ffmpeg/API credentials** (video) and **not yet deployed publicly** (the running app/dashboard — the code itself is public) — see caveats above. Fase 4 not started. Scalability roadmap drafted 2026-07-22, decision pending next session. Repo público en GitHub (`README.md` + `LICENSE` MIT) desde el 2026-07-22: https://github.com/mrzuzo90/AInfluencer
+**Status**: Fase 1 ✅ Complete. Fase 2 (Video) and Fase 3 (Bot Control + Analytics + Dashboard) are code-complete but **untested with real ffmpeg/API credentials** (video) and **not yet deployed publicly** (the running app/dashboard — the code itself is public) — see caveats above. Fase 4 not started. Scalability roadmap drafted 2026-07-22, decision pending next session. Repo público en GitHub (`README.md` + `LICENSE` propietaria, todos los derechos reservados) desde el 2026-07-22: https://github.com/mrzuzo90/AInfluencer

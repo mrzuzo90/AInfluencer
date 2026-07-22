@@ -123,4 +123,4 @@ Documentación técnica completa, decisiones de arquitectura y roadmap detallado
 
 ## Licencia
 
-[MIT](./LICENSE) — úsalo, adáptalo, revéndelo.
+Código propietario — [todos los derechos reservados](./LICENSE). El repositorio es público para que puedas revisar cómo está construido, pero no está licenciado para uso, copia ni reventa sin permiso. ¿Interesado en usarlo o adaptarlo para tu negocio? [Contacta para una licencia comercial](https://github.com/mrzuzo90).
