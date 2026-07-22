@@ -123,4 +123,4 @@ Documentación técnica completa, decisiones de arquitectura y roadmap detallado
 
 ## Licencia
 
-MIT — úsalo, adáptalo, revéndelo.
+[MIT](./LICENSE) — úsalo, adáptalo, revéndelo.
