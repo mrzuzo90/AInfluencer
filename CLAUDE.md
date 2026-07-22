@@ -161,6 +161,7 @@ MONETIZATION_SCORE = (
 - [x] Crear repo
 - [x] Setup CI/CD (GitHub Actions)
 - [x] Setup Claude.md + memoria
+- [x] Repo pública en GitHub: https://github.com/mrzuzo90/AInfluencer (creada y pusheada el 2026-07-22, `gh repo create --public`), con `README.md` orientado a venta y `LICENSE` (MIT)
 - [ ] Configure Supabase project — plantilla lista (`migrations/`), proyecto real aún no creado por el usuario
 - [ ] Config credentials (NewsAPI, Twitter, Telegram, etc.) — pendiente de que el usuario las ingrese
 
@@ -619,7 +620,7 @@ migrations/            (SQL schemas - run manually in Supabase SQL Editor)
    - No draft review system with visual preview via Telegram (text-only via `/draft-list`; the web dashboard does show content/scores)
    - No feedback loop (scoring doesn't adjust based on real performance yet)
 
-3. **Desplegar el dashboard públicamente** (`src/dashboard/`, code-complete y probado localmente el 2026-07-22 — ver sección detallada en Fase 3):
+3. **Desplegar el dashboard públicamente** (`src/dashboard/`, code-complete y probado localmente el 2026-07-22 — ver sección detallada en Fase 3). Importante: el **código** ya está público en GitHub, pero la **app en sí** (el proceso Node corriendo, con el dashboard accesible por URL) todavía no está desplegada en ningún host — hoy solo existe si corres `npm run dev`/`npm start` en tu máquina.
    - Elegir un host que corra el proceso Node de forma continua (Railway/Render/Fly/VPS) — el server respeta `PORT` para facilitar esto
    - Configurar Supabase real (`SUPABASE_URL`/`SUPABASE_ANON_KEY`, ver Fase 0) para que los datos sobrevivan a reinicios; hoy sigue en memoria como fallback y se resetea con cada deploy/restart
    - Sin esto el dashboard funciona perfectamente para demos locales, pero un link público mostraría datos vacíos tras cada restart
@@ -706,4 +707,4 @@ suficiente)? Confirmar esto antes de invertir en Nivel 2/3.
 
 ---
 
-**Status**: Fase 1 ✅ Complete. Fase 2 (Video) and Fase 3 (Bot Control + Analytics + Dashboard) are code-complete but **untested with real ffmpeg/API credentials** (video) and **not yet deployed publicly** (dashboard) — see caveats above. Fase 4 not started. Scalability roadmap drafted 2026-07-22, decision pending next session.
+**Status**: Fase 1 ✅ Complete. Fase 2 (Video) and Fase 3 (Bot Control + Analytics + Dashboard) are code-complete but **untested with real ffmpeg/API credentials** (video) and **not yet deployed publicly** (the running app/dashboard — the code itself is public) — see caveats above. Fase 4 not started. Scalability roadmap drafted 2026-07-22, decision pending next session. Repo público en GitHub (`README.md` + `LICENSE` MIT) desde el 2026-07-22: https://github.com/mrzuzo90/AInfluencer
