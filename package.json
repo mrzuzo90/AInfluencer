@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc && cp -r src/dashboard/public dist/dashboard/public",
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "tsc --noEmit",
@@ -26,11 +26,13 @@
     "@anthropic-ai/sdk": "^0.28.0",
     "@supabase/supabase-js": "^2.43.0",
     "dotenv": "^16.3.1",
+    "express": "^5.2.1",
     "node-cron": "^3.0.2",
     "pino": "^8.16.2",
     "pino-pretty": "^10.2.3"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^20.11.0",
     "@types/node-cron": "^3.0.11",
     "tsx": "^4.7.0",

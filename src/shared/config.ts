@@ -7,6 +7,8 @@ export interface Config {
   env: 'development' | 'production';
   logLevel: string;
   schedulerEnabled: boolean;
+  dashboardEnabled: boolean;
+  dashboardPort: number;
   publishLive: boolean;
   publishVideo: boolean;
   hybridRatio: number;
@@ -45,6 +47,8 @@ function getConfig(): Config {
   const env = (process.env.NODE_ENV || 'development') as 'development' | 'production';
   const logLevel = process.env.LOG_LEVEL || 'debug';
   const schedulerEnabled = process.env.SCHEDULER_ENABLED !== 'false';
+  const dashboardEnabled = process.env.DASHBOARD_ENABLED !== 'false';
+  const dashboardPort = parseInt(process.env.PORT || process.env.DASHBOARD_PORT || '3000', 10);
   const publishLive = process.env.PUBLISH_LIVE === 'true';
   const publishVideo = process.env.PUBLISH_VIDEO === 'true';
   const hybridRatio = parseInt(process.env.HYBRID_RATIO || '5', 10);
@@ -80,6 +84,8 @@ function getConfig(): Config {
     env,
     logLevel,
     schedulerEnabled,
+    dashboardEnabled,
+    dashboardPort,
     publishLive,
     publishVideo,
     hybridRatio,

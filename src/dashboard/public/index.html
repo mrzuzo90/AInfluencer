@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AInfluencer — Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>AInfluencer <span class="dim">/ dashboard</span></h1>
+    <div id="status-pills" class="pills"></div>
+  </header>
+
+  <main class="grid">
+    <section class="card" id="panel-live">
+      <h2>Pipeline en vivo</h2>
+      <div id="live-phase" class="live-phase">Esperando próxima ejecución…</div>
+      <div id="live-feed" class="feed"></div>
+    </section>
+
+    <section class="card" id="panel-scoring">
+      <h2>Transparencia de scoring</h2>
+      <p class="hint">Trending (40%) vs. Monetización (60%) por artículo evaluado</p>
+      <div id="scoring-list" class="scoring-list"></div>
+    </section>
+
+    <section class="card" id="panel-schedule">
+      <h2>Calendario</h2>
+      <div id="schedule-summary" class="schedule-summary"></div>
+      <table class="table" id="posts-table">
+        <thead>
+          <tr><th>Estado</th><th>Plataforma</th><th>Fecha</th><th>Contenido</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card" id="panel-analytics">
+      <h2>Analytics</h2>
+      <div id="analytics-summary" class="analytics-summary"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

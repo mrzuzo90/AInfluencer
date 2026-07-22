@@ -192,7 +192,8 @@ MONETIZATION_SCORE = (
 ### 🟡 FASE 3: User Control + Refinement — Mayormente completa
 
 - [x] Telegram commands (`/create-trending`, `/create-hybrid`, `/schedule`, `/analytics`, `/draft-list`, `/publish` — todos reales)
-- [ ] Draft review system con preview visual (hoy solo texto)
+- [x] Dashboard web (pipeline en vivo + transparencia de scoring + calendario + analytics) — `src/dashboard/`, ver sección detallada más abajo
+- [ ] Draft review system con preview visual (hoy solo texto vía Telegram; el dashboard web sí muestra el contenido de cada post)
 - [x] Analytics dashboard (impressions, engagement — trending/ROI comparisons no implementados)
 - [ ] Feedback loop (ajuste automático de scoring basado en performance) — no implementado
 
@@ -425,8 +426,18 @@ Requires the `ffmpeg` binary on PATH, built with `libass` for burned-in subtitle
 - [ ] hybrid vs trending performance comparison — no implementado
 - [ ] ROI by category/topic — no implementado
 
+### Dashboard Web (`src/dashboard/`)
+- [x] Servidor Express standalone (`src/dashboard/server.ts`), arranca junto al resto del proceso en `index.ts` cuando `DASHBOARD_ENABLED` (default `true`)
+- [x] Panel **Pipeline en vivo**: feed en tiempo real vía Server-Sent Events (`GET /api/events`) — instrumentado directamente en cada paso numerado de `pipeline.ts` (`runHybridPost`/`runTrendingPost`) a través de `src/dashboard/pipelineEvents.ts` (EventEmitter en memoria, últimos 10 runs)
+- [x] Panel **Transparencia de scoring**: barras de trending/monetization/final por artículo (`GET /api/articles`, reusa `articleRepo` tal cual)
+- [x] Panel **Calendario**: hora programada (`scheduler.getScheduledTime()`), cadencia hybrid, tabla de posts recientes (`GET /api/posts`)
+- [x] Panel **Analytics**: totales hoy/semana + top post, reusa `analyticsRepo.getTodaysAnalytics()`/`getWeeklyAnalytics()` (los mismos datos que ya usaba `/analytics` de Telegram)
+- Frontend auto-contenido en `src/dashboard/public/` (HTML/CSS/JS vanilla, sin build step ni CDN externo)
+- 100% solo-lectura a propósito — ningún endpoint dispara publicaciones ni corre el pipeline on-demand, para poder exponerlo públicamente sin riesgo (portfolio)
+- **Pendiente**: desplegarlo de verdad (elegir host — Railway/Render/Fly — y configurar Supabase real para que los datos persistan entre reinicios; hoy sigue en memoria como fallback si Supabase no está configurado)
+
 ### Pendiente (no implementado)
-- [ ] Draft review system con preview visual antes de publicar (hoy `/draft-list` es solo texto)
+- [ ] Draft review system con preview visual antes de publicar (hoy `/draft-list` de Telegram es solo texto; el dashboard web sí muestra contenido/scores)
 - [ ] Feedback loop: ajuste automático de scoring basado en performance real
 
 ### Technical
@@ -435,12 +446,16 @@ Requires the `ffmpeg` binary on PATH, built with `libass` for burned-in subtitle
 - `src/shared/telegramClient.ts` - cliente HTTP compartido (sendMessage + getUpdates), usado tanto por el bot como por `notifications/notifier.ts`
 - `src/scheduler.ts` - soporta reprogramación dinámica (`rescheduleDailyRun`)
 - `pipeline.ts` exporta `runHybridPost()` / `runTrendingPost()` directamente (en vez de un único `runPipeline()` que decidía por su cuenta)
+- `src/dashboard/server.ts` - Express app + endpoints `/api/status`, `/api/articles`, `/api/posts`, `/api/analytics`, `/api/events` (SSE)
+- `src/dashboard/pipelineEvents.ts` - EventEmitter singleton que trackea runs/steps en memoria para el panel en vivo
 
 ### Configuration
 ```
 TELEGRAM_BOT_TOKEN=          # https://t.me/BotFather
 TELEGRAM_CHAT_ID=            # npm run get-telegram-chat-id
 PUBLISH_LIVE=false           # Safe default; set true to auto-publish from bot
+DASHBOARD_ENABLED=true       # Sirve el dashboard web junto al resto del proceso
+DASHBOARD_PORT=3000          # PORT (inyectado por la mayoría de PaaS) tiene prioridad si está seteado
 ```
 
 ---
@@ -473,6 +488,8 @@ PUBLISH_LIVE=false           # Safe default; set true to auto-publish from bot
 NODE_ENV=development          # or production
 LOG_LEVEL=debug               # or info, warn, error
 SCHEDULER_ENABLED=false       # set true for automatic 9am runs
+DASHBOARD_ENABLED=true        # set false to disable the web dashboard
+DASHBOARD_PORT=3000           # PORT env var (set by most PaaS) takes priority
 ```
 
 ### API Keys (optional, auto-activate integrations)
@@ -529,6 +546,9 @@ npm run get-telegram-chat-id
 
 # View database / run migrations (Supabase web UI SQL Editor)
 # https://supabase.com/dashboard — paste migrations/001_init.sql, then 002_post_metrics.sql
+
+# Dashboard: starts automatically with `npm run dev` / `npm start` (DASHBOARD_ENABLED=true by default)
+# http://localhost:3000
 ```
 
 ---
@@ -544,6 +564,7 @@ npm run get-telegram-chat-id
 - **Video rendering**: ffmpeg (local binary) assembles Pexels stock footage + ElevenLabs narration + burned-in subtitles + watermark into an mp4; degrades to audio+metadata-only if ffmpeg/footage aren't available
 - **Notifications**: Console (default) → Telegram Bot (optional), shared HTTP client with the bot command handler
 - **Bot**: Telegram polling loop (exponential backoff on errors), started automatically when `TELEGRAM_BOT_TOKEN` is set
+- **Dashboard**: Express server (`src/dashboard/`), read-only, started automatically when `DASHBOARD_ENABLED` (default true) — pipeline en vivo (SSE), scoring transparency, calendario, analytics; self-contained vanilla HTML/CSS/JS, no build step
 
 ### Key Files
 - `src/pipeline.ts` - exports `runHybridPost()` / `runTrendingPost()`, plus `runPipeline()` which picks one via the scheduler's rotation
@@ -553,6 +574,8 @@ npm run get-telegram-chat-id
 - `src/video/videoAssembler.ts` - orchestrates script → narration → footage → render into a `CompiledVideo`
 - `src/publishing/videoPublisher.ts` - `selectPublisher()` is the single source of truth for draft/LinkedIn/video routing
 - `src/shared/telegramClient.ts` - shared Telegram HTTP client (bot + notifier)
+- `src/dashboard/server.ts` - Express app + read-only API (`/api/status`, `/api/articles`, `/api/posts`, `/api/analytics`, `/api/events`)
+- `src/dashboard/pipelineEvents.ts` - in-memory EventEmitter feeding the "pipeline en vivo" SSE panel
 - `.env.example` - credential template with links
 
 ### Folder Structure
@@ -566,6 +589,7 @@ src/
 ├── hybrid-profile/    (Your unique positioning)
 ├── video/             (Script optimization, narration, stock footage, ffmpeg rendering)
 ├── telegram/          (Bot command handler)
+├── dashboard/         (Web dashboard: Express server, SSE pipeline events, static frontend in public/)
 ├── shared/
 │   ├── repository/    (DB abstraction: articles, posts, analytics)
 │   ├── telegramClient.ts
@@ -573,7 +597,7 @@ src/
 │   └── types.ts       (Article, Post, GeneratedContent)
 ├── pipeline.ts        (Main orchestration)
 ├── scheduler.ts       (Cron + dynamic rescheduling)
-└── index.ts           (Entry point — starts scheduler AND bot polling)
+└── index.ts           (Entry point — starts dashboard, scheduler, AND bot polling)
 
 scripts/               (get-youtube-token, get-telegram-chat-id — one-time setup helpers)
 migrations/            (SQL schemas - run manually in Supabase SQL Editor)
@@ -592,14 +616,94 @@ migrations/            (SQL schemas - run manually in Supabase SQL Editor)
 
 2. **Remaining Fase 3 gaps**:
    - `/create-hybrid [topic-id]` still ignores the specific topic id
-   - No draft review system with visual preview (text-only via `/draft-list`)
+   - No draft review system with visual preview via Telegram (text-only via `/draft-list`; the web dashboard does show content/scores)
    - No feedback loop (scoring doesn't adjust based on real performance yet)
 
-3. **Fase 4** (not started): TikTok, Instagram Reels, multi-language, SEO optimization — see blockers table above
+3. **Desplegar el dashboard públicamente** (`src/dashboard/`, code-complete y probado localmente el 2026-07-22 — ver sección detallada en Fase 3):
+   - Elegir un host que corra el proceso Node de forma continua (Railway/Render/Fly/VPS) — el server respeta `PORT` para facilitar esto
+   - Configurar Supabase real (`SUPABASE_URL`/`SUPABASE_ANON_KEY`, ver Fase 0) para que los datos sobrevivan a reinicios; hoy sigue en memoria como fallback y se resetea con cada deploy/restart
+   - Sin esto el dashboard funciona perfectamente para demos locales, pero un link público mostraría datos vacíos tras cada restart
 
-4. **Customize hybrid topics** if the 8 don't fit your exact angle
+4. **Fase 4** (not started): TikTok, Instagram Reels, multi-language, SEO optimization — see blockers table above
+
+5. **Customize hybrid topics** if the 8 don't fit your exact angle
    - Edit `src/hybrid-profile/hybridTopics.ts`
+
+6. **Decidir el roadmap de escalabilidad** (ver sección detallada justo abajo) — empezar por Nivel 1
 
 ---
 
-**Status**: Fase 1 ✅ Complete. Fase 2 (Video) and Fase 3 (Bot Control + Analytics) are code-complete but **untested with real ffmpeg/API credentials** — see caveats above. Fase 4 not started.
+## Escalabilidad: roadmap para producción / multi-negocio (pensado 2026-07-22, sin implementar)
+
+Contexto: el usuario quiere que el proyecto sea "lo más escalable posible" y adaptable a que
+**cualquier negocio** lo use para automatizar su creación de contenido (no solo el nicho actual
+de IA + Electricidad). Esto es una reflexión de arquitectura para retomar y decidir juntos en la
+próxima sesión — nada de esto se ha implementado todavía.
+
+### Por qué hoy no escala tal cual (cuellos de botella reales)
+
+1. **Single-tenant por diseño**: la config vive en variables de entorno leídas una vez al boot
+   (`src/shared/config.ts`) — un proceso = un nicho = un set de credenciales. Servir a varios
+   clientes hoy significa desplegar un proceso completo por cliente.
+2. **Pipeline síncrono en un solo proceso**: `runPipeline()` (`src/pipeline.ts`) hace
+   aggregate→score→generate→render→publish en la misma llamada. Si el render de vídeo o Claude
+   tardan, bloquea la instancia entera; no hay reintentos independientes por fase — el Bull queue
+   que proponía la visión original de este documento nunca llegó a implementarse.
+3. **Estado del pipeline en vivo es solo de proceso**: `src/dashboard/pipelineEvents.ts` es un
+   `EventEmitter` en memoria. Si el dashboard corriera detrás de un load balancer con N
+   instancias, cada una solo vería sus propios runs.
+4. **Vídeo en disco local** (`VIDEO_OUTPUT_DIR`) — no sobrevive a un redeploy ni se comparte entre
+   instancias; ya estaba anotado como blocker de Fase 4 en la tabla de arriba.
+5. **Logs solo por consola** (pino-pretty) — sin agregación centralizada (Datadog/Sentry estaban
+   en la visión original, nunca implementados); tras un incidente no hay forma de reconstruir qué
+   pasó salvo mirando la terminal de esa instancia en ese momento.
+6. **Sin rate limiting/backoff explícito** hacia APIs externas (Claude, NewsAPI, ElevenLabs) más
+   allá de lo que cada SDK haga por defecto — a más volumen, más riesgo de 429s no manejados.
+
+### Roadmap propuesto, de menor a mayor esfuerzo
+
+**Nivel 1 — Quick wins, no cambian arquitectura** (barato, vale la pena ya):
+- Mover el output de vídeo a almacenamiento en la nube (S3/Cloudinary) en vez de disco local.
+- Índices en Postgres sobre lo que el dashboard ya consulta (`articles.evaluatedAt`,
+  `posts.status`, `posts.publishedAt`) antes de que el volumen lo haga necesario.
+- Logs estructurados a un sink centralizado en vez de solo consola.
+
+**Nivel 2 — Desacoplar el pipeline (queue-based)**:
+- Cola real (BullMQ + Redis) entre cada fase del pipeline, como proponía el diseño original.
+  Beneficios: reintentos por fase sin repetir todo, escalar horizontalmente solo la fase más cara
+  (render de vídeo) sin escalar el resto, y no bloquear el proceso principal mientras un vídeo
+  renderiza.
+- Mover `pipelineEvents` de EventEmitter en memoria a algo compartido entre instancias (Redis
+  pub/sub o Postgres `LISTEN/NOTIFY`) para que el dashboard funcione con N instancias detrás de un
+  load balancer.
+
+**Nivel 3 — Multi-tenant real** (lo que lo hace "vendible a cualquier negocio" de verdad, y lo
+más caro de construir):
+- Config por tenant en base de datos en vez de env vars: cada cliente/nicho con sus topics, su
+  cadencia, sus plataformas activas y sus credenciales (cifradas) — un mismo despliegue sirve a
+  N clientes en vez de un proceso por cliente.
+- Publishers y fuentes de noticias como registro de plugins
+  (`registerPublisher('tiktok', TikTokPublisher)`) en vez de imports directos, para que añadir un
+  cliente con una plataforma nueva no toque código core.
+- Gestor de secretos en vez de env vars planos en cuanto haya más de un tenant con sus propias
+  claves.
+- Extender el tiering de modelos Claude que ya existe (Haiku/Sonnet/Opus por fase, ver
+  "Estrategia de Modelos Claude" arriba) a un presupuesto por cliente/tenant.
+
+### Qué NO hacer todavía
+
+- No migrar a microservicios/Kubernetes — Nivel 1+2 ya soportan un volumen razonable (varios
+  nichos, publicación diaria) sin esa complejidad operativa.
+- No construir Nivel 3 (multi-tenant) hasta que exista un segundo cliente/nicho real que lo
+  necesite — es la parte más cara de construir y mantener; validar demanda primero.
+
+### Decisión pendiente para la próxima sesión
+
+Nivel 2 y 3 no son solo decisión técnica, son decisión de producto: ¿el objetivo es vender el
+software en sí a terceros que lo autogestionan (→ Nivel 3, multi-tenant) o venderte a ti mismo
+como quien lo opera para varios clientes (→ varios despliegues de Nivel 1, más simple y ya
+suficiente)? Confirmar esto antes de invertir en Nivel 2/3.
+
+---
+
+**Status**: Fase 1 ✅ Complete. Fase 2 (Video) and Fase 3 (Bot Control + Analytics + Dashboard) are code-complete but **untested with real ffmpeg/API credentials** (video) and **not yet deployed publicly** (dashboard) — see caveats above. Fase 4 not started. Scalability roadmap drafted 2026-07-22, decision pending next session.
